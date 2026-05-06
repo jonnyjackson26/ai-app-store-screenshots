@@ -136,6 +136,7 @@ export const useJsonSync = (editor: Editor | undefined) => {
     canvas.on("object:added", refreshFromCanvas);
     canvas.on("object:removed", refreshFromCanvas);
     canvas.on("object:modified", refreshFromCanvas);
+    canvas.on("canvas:dirty" as never, refreshFromCanvas);
     canvas.on("text:editing:entered", onTextEnter);
     canvas.on("text:editing:exited", onTextExit);
 
@@ -143,6 +144,7 @@ export const useJsonSync = (editor: Editor | undefined) => {
       canvas.off("object:added", refreshFromCanvas);
       canvas.off("object:removed", refreshFromCanvas);
       canvas.off("object:modified", refreshFromCanvas);
+      canvas.off("canvas:dirty" as never, refreshFromCanvas);
       canvas.off("text:editing:entered", onTextEnter);
       canvas.off("text:editing:exited", onTextExit);
     };

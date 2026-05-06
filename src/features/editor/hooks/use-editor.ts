@@ -142,6 +142,14 @@ const buildEditor = ({
     canvas.setActiveObject(object);
   };
 
+  const notifyChange = () => {
+    // Custom event consumed by useJsonSync to mirror property mutations
+    // that don't naturally fire object:added/removed/modified.
+    // Intentionally not fired through the history path so picker drags
+    // don't spam undo entries.
+    canvas.fire("canvas:dirty" as never);
+  };
+
   return {
     projectTitle,
     setProjectTitle,
@@ -180,12 +188,14 @@ const buildEditor = ({
       workspace?.set(value);
       autoZoom();
       save();
+      notifyChange();
     },
     changeBackground: (value: string) => {
       const workspace = getWorkspace();
       workspace?.set({ fill: value });
       canvas.renderAll();
       save();
+      notifyChange();
     },
     enableDrawingMode: () => {
       canvas.discardActiveObject();
@@ -214,6 +224,7 @@ const buildEditor = ({
           canvas.renderAll();
         }
       });
+      notifyChange();
     },
     addImage: (value: string) => {
       fabric.Image.fromURL(
@@ -265,6 +276,7 @@ const buildEditor = ({
         }
       });
       canvas.renderAll();
+      notifyChange();
     },
     getActiveFontSize: () => {
       const selectedObject = selectedObjects[0];
@@ -288,6 +300,7 @@ const buildEditor = ({
         }
       });
       canvas.renderAll();
+      notifyChange();
     },
     getActiveTextAlign: () => {
       const selectedObject = selectedObjects[0];
@@ -311,6 +324,7 @@ const buildEditor = ({
         }
       });
       canvas.renderAll();
+      notifyChange();
     },
     getActiveFontUnderline: () => {
       const selectedObject = selectedObjects[0];
@@ -334,6 +348,7 @@ const buildEditor = ({
         }
       });
       canvas.renderAll();
+      notifyChange();
     },
     getActiveFontLinethrough: () => {
       const selectedObject = selectedObjects[0];
@@ -357,6 +372,7 @@ const buildEditor = ({
         }
       });
       canvas.renderAll();
+      notifyChange();
     },
     getActiveFontStyle: () => {
       const selectedObject = selectedObjects[0];
@@ -380,12 +396,14 @@ const buildEditor = ({
         }
       });
       canvas.renderAll();
+      notifyChange();
     },
     changeOpacity: (value: number) => {
       canvas.getActiveObjects().forEach((object) => {
         object.set({ opacity: value });
       });
       canvas.renderAll();
+      notifyChange();
     },
     bringForward: () => {
       canvas.getActiveObjects().forEach((object) => {
@@ -393,9 +411,10 @@ const buildEditor = ({
       });
 
       canvas.renderAll();
-      
+
       const workspace = getWorkspace();
       workspace?.sendToBack();
+      notifyChange();
     },
     sendBackwards: () => {
       canvas.getActiveObjects().forEach((object) => {
@@ -405,6 +424,7 @@ const buildEditor = ({
       canvas.renderAll();
       const workspace = getWorkspace();
       workspace?.sendToBack();
+      notifyChange();
     },
     changeFontFamily: (value: string) => {
       setFontFamily(value);
@@ -416,6 +436,7 @@ const buildEditor = ({
         }
       });
       canvas.renderAll();
+      notifyChange();
     },
     changeFillColor: (value: string) => {
       setFillColor(value);
@@ -423,6 +444,7 @@ const buildEditor = ({
         object.set({ fill: value });
       });
       canvas.renderAll();
+      notifyChange();
     },
     changeStrokeColor: (value: string) => {
       setStrokeColor(value);
@@ -437,6 +459,7 @@ const buildEditor = ({
       });
       canvas.freeDrawingBrush.color = value;
       canvas.renderAll();
+      notifyChange();
     },
     changeStrokeWidth: (value: number) => {
       setStrokeWidth(value);
@@ -445,6 +468,7 @@ const buildEditor = ({
       });
       canvas.freeDrawingBrush.width = value;
       canvas.renderAll();
+      notifyChange();
     },
     changeStrokeDashArray: (value: number[]) => {
       setStrokeDashArray(value);
@@ -452,6 +476,7 @@ const buildEditor = ({
         object.set({ strokeDashArray: value });
       });
       canvas.renderAll();
+      notifyChange();
     },
     addCircle: () => {
       const object = new fabric.Circle({

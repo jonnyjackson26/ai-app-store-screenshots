@@ -14,11 +14,14 @@ export function transformText(objects: any) {
   });
 };
 
-export function downloadFile(file: string, type: string) {
+export function downloadFile(file: string, type: string, name?: string) {
   const anchorElement = document.createElement("a");
 
+  const sanitized = name?.replace(/[\\/:*?"<>|]/g, "").trim();
+  const base = sanitized || uuid();
+
   anchorElement.href = file;
-  anchorElement.download = `${uuid()}.${type}`;
+  anchorElement.download = `${base}.${type}`;
   document.body.appendChild(anchorElement);
   anchorElement.click();
   anchorElement.remove();

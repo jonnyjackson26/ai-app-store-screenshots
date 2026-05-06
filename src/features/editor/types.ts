@@ -193,6 +193,8 @@ export type BuildEditorProps = {
   setStrokeColor: (value: string) => void;
   setStrokeWidth: (value: number) => void;
   setFontFamily: (value: string) => void;
+  projectTitle: string;
+  setProjectTitle: (value: string) => void;
 };
 
 export interface Editor {
@@ -253,4 +255,6 @@ export interface Editor {
   getActiveStrokeWidth: () => number;
   getActiveStrokeDashArray: () => number[];
   selectedObjects: fabric.Object[];
+  projectTitle: string;
+  setProjectTitle: (value: string) => void;
 };

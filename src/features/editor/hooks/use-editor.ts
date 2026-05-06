@@ -54,6 +54,8 @@ const buildEditor = ({
   selectedObjects,
   strokeDashArray,
   setStrokeDashArray,
+  projectTitle,
+  setProjectTitle,
 }: BuildEditorProps): Editor => {
   const generateSaveOptions = () => {
     const { width, height, left, top } = getWorkspace() as fabric.Rect;
@@ -75,7 +77,7 @@ const buildEditor = ({
     canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
     const dataUrl = canvas.toDataURL(options);
 
-    downloadFile(dataUrl, "png");
+    downloadFile(dataUrl, "png", projectTitle);
     autoZoom();
   };
 
@@ -85,7 +87,7 @@ const buildEditor = ({
     canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
     const dataUrl = canvas.toDataURL(options);
 
-    downloadFile(dataUrl, "svg");
+    downloadFile(dataUrl, "svg", projectTitle);
     autoZoom();
   };
 
@@ -95,7 +97,7 @@ const buildEditor = ({
     canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
     const dataUrl = canvas.toDataURL(options);
 
-    downloadFile(dataUrl, "jpg");
+    downloadFile(dataUrl, "jpg", projectTitle);
     autoZoom();
   };
 
@@ -106,7 +108,7 @@ const buildEditor = ({
     const fileString = `data:text/json;charset=utf-8,${encodeURIComponent(
       JSON.stringify(dataUrl, null, "\t"),
     )}`;
-    downloadFile(fileString, "json");
+    downloadFile(fileString, "json", projectTitle);
   };
 
   const loadJson = (json: string) => {
@@ -140,6 +142,8 @@ const buildEditor = ({
   };
 
   return {
+    projectTitle,
+    setProjectTitle,
     savePng,
     saveJpg,
     saveSvg,
@@ -629,6 +633,7 @@ export const useEditor = ({
   const [strokeColor, setStrokeColor] = useState(STROKE_COLOR);
   const [strokeWidth, setStrokeWidth] = useState(STROKE_WIDTH);
   const [strokeDashArray, setStrokeDashArray] = useState<number[]>(STROKE_DASH_ARRAY);
+  const [projectTitle, setProjectTitle] = useState("Untitled design");
 
   useWindowEvents();
 
@@ -698,11 +703,13 @@ export const useEditor = ({
         setStrokeDashArray,
         fontFamily,
         setFontFamily,
+        projectTitle,
+        setProjectTitle,
       });
     }
 
     return undefined;
-  }, 
+  },
   [
     canRedo,
     canUndo,
@@ -719,6 +726,7 @@ export const useEditor = ({
     selectedObjects,
     strokeDashArray,
     fontFamily,
+    projectTitle,
   ]);
 
   const init = useCallback(

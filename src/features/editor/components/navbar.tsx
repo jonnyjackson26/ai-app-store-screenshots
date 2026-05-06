@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { CiFileOn } from "react-icons/ci";
 import { useFilePicker } from "use-file-picker";
 import {
@@ -63,6 +64,8 @@ export const Navbar = ({
     }
   };
 
+  const hasFocusedTitle = useRef(false);
+
   return (
     <nav className="w-full flex items-center p-4 h-[68px] gap-x-8 border-b lg:pl-[34px]">
       <NewConfirmDialog />
@@ -102,6 +105,19 @@ export const Navbar = ({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        <Separator orientation="vertical" className="mx-2" />
+        <input
+          value={editor?.projectTitle ?? ""}
+          onChange={(e) => editor?.setProjectTitle(e.target.value)}
+          onFocus={(e) => {
+            if (!hasFocusedTitle.current) {
+              hasFocusedTitle.current = true;
+              e.target.select();
+            }
+          }}
+          placeholder="Untitled design"
+          className="h-9 px-3 text-sm bg-transparent rounded-md border border-transparent hover:border-input focus:border-input focus:bg-background outline-none transition-colors max-w-[240px] text-left"
+        />
         <Separator orientation="vertical" className="mx-2" />
         <Hint label="Select" side="bottom" sideOffset={10}>
           <Button

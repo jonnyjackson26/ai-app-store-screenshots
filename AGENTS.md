@@ -1,0 +1,1 @@
+Never migrate or worry about backwards compatability. We are very early in dev with no users.

@@ -90,3 +90,22 @@ body {
   border-radius: 0.5rem !important;
   overflow: hidden !important;
 }
+
+/* Ephemeral change indicators for the JSON Monaco editor.
+   Applied via editor.deltaDecorations when a canvas-driven update
+   modifies a line. Fades over 1s. */
+.json-change-line {
+  background: rgba(34, 197, 94, 0.18);
+  animation: jsonChangeFade 1s ease-out forwards;
+}
+.json-change-gutter {
+  width: 3px !important;
+  margin-left: 4px;
+  background: rgb(34, 197, 94);
+  animation: jsonChangeFade 1s ease-out forwards;
+}
+@keyframes jsonChangeFade {
+  0% { opacity: 1; }
+  85% { opacity: 1; }
+  100% { opacity: 0; }
+}

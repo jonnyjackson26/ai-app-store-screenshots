@@ -1,6 +1,8 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import type { OnMount } from "@monaco-editor/react";
+import { useEffect, useRef } from "react";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
 
 import { ActiveTool, Editor } from "@/features/editor/types";
@@ -9,6 +11,9 @@ import { ToolSidebarHeader } from "@/features/editor/components/tool-sidebar-hea
 import { useJsonSync } from "@/features/editor/hooks/use-json-sync";
 
 import { cn } from "@/lib/utils";
+
+type MonacoEditorInstance = Parameters<OnMount>[0];
+type MonacoNamespace = Parameters<OnMount>[1];
 
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
   ssr: false,
@@ -30,7 +35,45 @@ export const JsonSidebar = ({
   activeTool,
   onChangeActiveTool,
 }: JsonSidebarProps) => {
-  const { value, setValue, status } = useJsonSync(editor);
+  const { value, setValue, status, highlight } = useJsonSync(editor);
+
+  const editorRef = useRef<MonacoEditorInstance | null>(null);
+  const monacoRef = useRef<MonacoNamespace | null>(null);
+
+  const handleMount: OnMount = (instance, monaco) => {
+    editorRef.current = instance;
+    monacoRef.current = monaco;
+  };
+
+  useEffect(() => {
+    const instance = editorRef.current;
+    const monaco = monacoRef.current;
+    if (!instance || !monaco || highlight.lines.length === 0) return;
+
+    const collection = instance.createDecorationsCollection(
+      highlight.lines.map((line) => ({
+        range: new monaco.Range(line + 1, 1, line + 1, 1),
+        options: {
+          isWholeLine: true,
+          className: "json-change-line",
+          linesDecorationsClassName: "json-change-gutter",
+          overviewRuler: {
+            color: "rgba(34, 197, 94, 0.85)",
+            position: monaco.editor.OverviewRulerLane.Right,
+          },
+        },
+      })),
+    );
+
+    const timer = window.setTimeout(() => {
+      collection.clear();
+    }, 1000);
+
+    return () => {
+      window.clearTimeout(timer);
+      collection.clear();
+    };
+  }, [highlight.id, highlight.lines]);
 
   const onClose = () => {
     onChangeActiveTool("select");
@@ -54,6 +97,7 @@ export const JsonSidebar = ({
           theme="vs"
           value={value}
           onChange={setValue}
+          onMount={handleMount}
           options={{
             minimap: { enabled: false },
             formatOnPaste: true,

@@ -8,6 +8,30 @@ const DEBOUNCE_MS = 400;
 const serialize = (canvas: fabric.Canvas) =>
   JSON.stringify(canvas.toJSON(JSON_KEYS), null, 2);
 
+// Multiset line diff: returns 0-indexed line numbers in `next` that did not
+// appear in `prev` (or appeared more times in `next`). Cheap and good enough
+// for the "this line just changed" flash — it precisely catches modified
+// property values and added object lines, and ignores brace/bracket noise.
+const changedLineNumbers = (prev: string, next: string): number[] => {
+  if (!prev) return [];
+  const prevLines = prev.split("\n");
+  const nextLines = next.split("\n");
+  const counts = new Map<string, number>();
+  for (const line of prevLines) {
+    counts.set(line, (counts.get(line) ?? 0) + 1);
+  }
+  const changed: number[] = [];
+  for (let i = 0; i < nextLines.length; i++) {
+    const remaining = counts.get(nextLines[i]) ?? 0;
+    if (remaining > 0) {
+      counts.set(nextLines[i], remaining - 1);
+    } else {
+      changed.push(i);
+    }
+  }
+  return changed;
+};
+
 const validateShape = (parsed: unknown): string | null => {
   if (typeof parsed !== "object" || parsed === null) {
     return "Document must be a JSON object.";
@@ -32,6 +56,10 @@ export const useJsonSync = (editor: Editor | undefined) => {
 
   const [value, setValueState] = useState<string>("");
   const [status, setStatus] = useState<JsonStatus>({ ok: true });
+  const [highlight, setHighlight] = useState<{ id: number; lines: number[] }>({
+    id: 0,
+    lines: [],
+  });
 
   const applyingFromJson = useRef(false);
   const pendingUserEdit = useRef(false);
@@ -122,7 +150,13 @@ export const useJsonSync = (editor: Editor | undefined) => {
       if (applyingFromJson.current) return;
       if (isTextEditing.current) return;
       if (pendingUserEdit.current) return;
-      setValueState(serialize(canvas));
+      const next = serialize(canvas);
+      const prev = valueRef.current;
+      setValueState(next);
+      const lines = changedLineNumbers(prev, next);
+      if (lines.length > 0) {
+        setHighlight((h) => ({ id: h.id + 1, lines }));
+      }
     };
 
     const onTextEnter = () => {
@@ -150,5 +184,5 @@ export const useJsonSync = (editor: Editor | undefined) => {
     };
   }, [canvas]);
 
-  return { value, setValue, status };
+  return { value, setValue, status, highlight };
 };

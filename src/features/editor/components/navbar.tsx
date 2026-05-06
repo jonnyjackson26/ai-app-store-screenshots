@@ -116,7 +116,7 @@ export const Navbar = ({
             }
           }}
           placeholder="Untitled design"
-          className="h-9 px-3 text-sm bg-transparent rounded-md border border-transparent hover:border-input focus:border-input focus:bg-background outline-none transition-colors max-w-[240px] text-left"
+          className="h-9 px-3 text-sm bg-transparent rounded-md border border-transparent hover:border-input focus:border-input focus:bg-background outline-none transition-colors max-w-[240px] [field-sizing:content]"
         />
         <Separator orientation="vertical" className="mx-2" />
         <Hint label="Select" side="bottom" sideOffset={10}>

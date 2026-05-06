@@ -1,3 +1,4 @@
+import type { MutableRefObject } from "react";
 import { fabric } from "fabric";
 import { ITextboxOptions } from "fabric/fabric-impl";
 import * as material from "material-colors";
@@ -104,7 +105,8 @@ export type ActiveTool =
   | "opacity"
   | "filter"
   | "settings"
-  | "templates";
+  | "templates"
+  | "json";
 
 export const FILL_COLOR = "rgba(0,0,0,1)";
 export const STROKE_COLOR = "rgba(0,0,0,1)";
@@ -176,6 +178,7 @@ export type BuildEditorProps = {
   undo: () => void;
   redo: () => void;
   save: (skip?: boolean) => void;
+  skipSave: MutableRefObject<boolean>;
   canUndo: () => boolean;
   canRedo: () => boolean;
   autoZoom: () => void;
@@ -203,6 +206,8 @@ export interface Editor {
   saveSvg: () => void;
   saveJson: () => void;
   loadJson: (json: string) => void;
+  save: (skip?: boolean) => void;
+  skipSave: MutableRefObject<boolean>;
   onUndo: () => void;
   onRedo: () => void;
   canUndo: () => boolean;

@@ -76,5 +76,6 @@ export const useHistory = ({ canvas }: UseHistoryProps) => {
     redo,
     setHistoryIndex,
     canvasHistory,
+    skipSave,
   };
 };

@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  FileJson,
   LayoutTemplate,
   ImageIcon,
   Pencil,
@@ -59,6 +60,12 @@ export const Sidebar = ({
           label="Settings"
           isActive={activeTool === "settings"}
           onClick={() => onChangeActiveTool("settings")}
+        />
+        <SidebarItem
+          icon={FileJson}
+          label="JSON"
+          isActive={activeTool === "json"}
+          onClick={() => onChangeActiveTool("json")}
         />
       </ul>
     </aside>

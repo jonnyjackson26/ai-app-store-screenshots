@@ -35,6 +35,7 @@ import { useLoadState } from "@/features/editor/hooks/use-load-state";
 
 const buildEditor = ({
   save,
+  skipSave,
   undo,
   redo,
   canRedo,
@@ -149,6 +150,8 @@ const buildEditor = ({
     saveSvg,
     saveJson,
     loadJson,
+    save,
+    skipSave,
     canUndo,
     canRedo,
     autoZoom,
@@ -637,14 +640,15 @@ export const useEditor = ({
 
   useWindowEvents();
 
-  const { 
-    save, 
-    canRedo, 
-    canUndo, 
-    undo, 
+  const {
+    save,
+    canRedo,
+    canUndo,
+    undo,
     redo,
     canvasHistory,
     setHistoryIndex,
+    skipSave,
   } = useHistory({
     canvas,
   });
@@ -684,6 +688,7 @@ export const useEditor = ({
     if (canvas) {
       return buildEditor({
         save,
+        skipSave,
         undo,
         redo,
         canUndo,
@@ -716,6 +721,7 @@ export const useEditor = ({
     undo,
     redo,
     save,
+    skipSave,
     autoZoom,
     copy,
     paste,

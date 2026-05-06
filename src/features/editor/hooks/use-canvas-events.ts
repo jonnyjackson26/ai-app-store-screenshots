@@ -15,31 +15,38 @@ export const useCanvasEvents = ({
   clearSelectionCallback,
 }: UseCanvasEventsProps) => {
   useEffect(() => {
-    if (canvas) {
-      canvas.on("object:added", () => save());
-      canvas.on("object:removed", () => save());
-      canvas.on("object:modified", () => save());
-      canvas.on("selection:created", (e) => {
-        setSelectedObjects(e.selected || []);
-      });
-      canvas.on("selection:updated", (e) => {
-        setSelectedObjects(e.selected || []);
-      });
-      canvas.on("selection:cleared", () => {
-        setSelectedObjects([]);
-        clearSelectionCallback?.();
-      });
-    }
+    if (!canvas) return;
+
+    const onObjectAdded = () => save();
+    const onObjectRemoved = () => save();
+    const onObjectModified = () => save();
+    const onSelectionCreated = (e: fabric.IEvent) => {
+      // @ts-ignore — fabric IEvent.selected is present on selection events
+      setSelectedObjects(e.selected || []);
+    };
+    const onSelectionUpdated = (e: fabric.IEvent) => {
+      // @ts-ignore
+      setSelectedObjects(e.selected || []);
+    };
+    const onSelectionCleared = () => {
+      setSelectedObjects([]);
+      clearSelectionCallback?.();
+    };
+
+    canvas.on("object:added", onObjectAdded);
+    canvas.on("object:removed", onObjectRemoved);
+    canvas.on("object:modified", onObjectModified);
+    canvas.on("selection:created", onSelectionCreated);
+    canvas.on("selection:updated", onSelectionUpdated);
+    canvas.on("selection:cleared", onSelectionCleared);
 
     return () => {
-      if (canvas) {
-        canvas.off("object:added");
-        canvas.off("object:removed");
-        canvas.off("object:modified");
-        canvas.off("selection:created");
-        canvas.off("selection:updated");
-        canvas.off("selection:cleared");
-      }
+      canvas.off("object:added", onObjectAdded);
+      canvas.off("object:removed", onObjectRemoved);
+      canvas.off("object:modified", onObjectModified);
+      canvas.off("selection:created", onSelectionCreated as never);
+      canvas.off("selection:updated", onSelectionUpdated as never);
+      canvas.off("selection:cleared", onSelectionCleared);
     };
   },
   [

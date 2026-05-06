@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { ActiveTool, Editor } from "@/features/editor/types";
+import { ActiveTool, DEFAULT_NUM_PAGES, Editor } from "@/features/editor/types";
 import { ToolSidebarClose } from "@/features/editor/components/tool-sidebar-close";
 import { ToolSidebarHeader } from "@/features/editor/components/tool-sidebar-header";
 import { ColorPicker } from "@/features/editor/components/color-picker";
@@ -24,26 +24,39 @@ export const SettingsSidebar = ({
 }: SettingsSidebarProps) => {
   const workspace = editor?.getWorkspace();
 
-  const initialWidth = useMemo(() => `${workspace?.width ?? 0}`, [workspace]);
+  const initialNumPages = useMemo(() => {
+    const raw = (workspace as (fabric.Object & { numPages?: number }) | undefined)?.numPages;
+    const parsed = typeof raw === "number" && raw >= 1 ? Math.floor(raw) : DEFAULT_NUM_PAGES;
+    return `${parsed}`;
+  }, [workspace]);
+  const initialPageWidth = useMemo(() => {
+    const totalWidth = workspace?.width ?? 0;
+    const pages = parseInt(initialNumPages, 10) || DEFAULT_NUM_PAGES;
+    return `${Math.round(totalWidth / pages)}`;
+  }, [workspace, initialNumPages]);
   const initialHeight = useMemo(() => `${workspace?.height ?? 0}`, [workspace]);
   const initialBackground = useMemo(() => workspace?.fill ?? "#ffffff", [workspace]);
 
-  const [width, setWidth] = useState(initialWidth);
+  const [pageWidth, setPageWidth] = useState(initialPageWidth);
+  const [numPages, setNumPages] = useState(initialNumPages);
   const [height, setHeight] = useState(initialHeight);
   const [background, setBackground] = useState(initialBackground);
 
   useEffect(() => {
-    setWidth(initialWidth);
+    setPageWidth(initialPageWidth);
+    setNumPages(initialNumPages);
     setHeight(initialHeight);
     setBackground(initialBackground);
-  }, 
+  },
   [
-    initialWidth,
+    initialPageWidth,
+    initialNumPages,
     initialHeight,
     initialBackground
   ]);
 
-  const changeWidth = (value: string) => setWidth(value);
+  const changePageWidth = (value: string) => setPageWidth(value);
+  const changeNumPages = (value: string) => setNumPages(value);
   const changeHeight = (value: string) => setHeight(value);
   const changeBackground = (value: string) => {
     setBackground(value);
@@ -54,8 +67,9 @@ export const SettingsSidebar = ({
     e.preventDefault();
 
     editor?.changeSize({
-      width: parseInt(width, 10),
+      width: parseInt(pageWidth, 10),
       height: parseInt(height, 10),
+      numPages: parseInt(numPages, 10),
     });
   }
 
@@ -89,13 +103,26 @@ export const SettingsSidebar = ({
           </div>
           <div className="space-y-2">
             <Label>
-              Width
+              Page width
             </Label>
             <Input
-              placeholder="Width"
-              value={width}
+              placeholder="Page width"
+              value={pageWidth}
               type="number"
-              onChange={(e) => changeWidth(e.target.value)}
+              onChange={(e) => changePageWidth(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>
+              Number of pages
+            </Label>
+            <Input
+              placeholder="Number of pages"
+              value={numPages}
+              type="number"
+              min={1}
+              step={1}
+              onChange={(e) => changeNumPages(e.target.value)}
             />
           </div>
           <Button type="submit" className="w-full">

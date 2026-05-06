@@ -11,8 +11,11 @@ export const JSON_KEYS = [
   "linkData",
   "editable",
   "extensionType",
-  "extension"
+  "extension",
+  "numPages",
 ];
+
+export const DEFAULT_NUM_PAGES = 1;
 
 export const filters = [
   "none",
@@ -217,7 +220,7 @@ export interface Editor {
   zoomOut: () => void;
   getWorkspace: () => fabric.Object | undefined;
   changeBackground: (value: string) => void;
-  changeSize: (value: { width: number; height: number }) => void;
+  changeSize: (value: { width: number; height: number; numPages: number }) => void;
   enableDrawingMode: () => void;
   disableDrawingMode: () => void;
   onCopy: () => void;

@@ -1,4 +1,5 @@
 import { fabric } from "fabric";
+import JSZip from "jszip";
 import { useCallback, useState, useMemo, useRef } from "react";
 
 import { 
@@ -18,6 +19,7 @@ import {
   FONT_WEIGHT,
   FONT_SIZE,
   JSON_KEYS,
+  DEFAULT_NUM_PAGES,
 } from "@/features/editor/types";
 import { useHistory } from "@/features/editor/hooks/use-history";
 import { 
@@ -72,35 +74,85 @@ const buildEditor = ({
     };
   };
 
-  const savePng = () => {
+  // Captures one PNG dataURL per page by slicing the workspace along its
+  // width. Caller must have already reset the viewport transform.
+  // Returns [] when there's only one page (the main image already covers it).
+  const capturePages = (): string[] => {
+    const workspace = getWorkspace() as
+      | (fabric.Rect & { numPages?: number })
+      | undefined;
+    if (!workspace) return [];
+
+    const numPages = Math.max(
+      1,
+      Math.floor(workspace.numPages ?? DEFAULT_NUM_PAGES),
+    );
+    if (numPages <= 1) return [];
+
+    const totalWidth = workspace.width ?? 0;
+    const pageWidth = totalWidth / numPages;
+    const height = workspace.height ?? 0;
+    const top = workspace.top ?? 0;
+    const baseLeft = workspace.left ?? 0;
+
+    const captures: string[] = [];
+    for (let i = 0; i < numPages; i++) {
+      captures.push(
+        canvas.toDataURL({
+          format: "png",
+          quality: 1,
+          width: pageWidth,
+          height,
+          left: baseLeft + i * pageWidth,
+          top,
+        }),
+      );
+    }
+    return captures;
+  };
+
+  const downloadAsZip = async (
+    fullDataUrl: string,
+    pageDataUrls: string[],
+    extension: string,
+  ) => {
+    const zip = new JSZip();
+    const fullBase64 = fullDataUrl.split(",")[1] ?? "";
+    zip.file(`${projectTitle}.${extension}`, fullBase64, { base64: true });
+
+    const pad = String(pageDataUrls.length).length;
+    pageDataUrls.forEach((dataUrl, i) => {
+      const base64 = dataUrl.split(",")[1] ?? "";
+      const name = `${String(i + 1).padStart(pad, "0")}.${extension}`;
+      zip.file(name, base64, { base64: true });
+    });
+
+    const blob = await zip.generateAsync({ type: "blob" });
+    const url = URL.createObjectURL(blob);
+    downloadFile(url, "zip", projectTitle);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  const saveImage = (extension: string) => {
     const options = generateSaveOptions();
 
     canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
-    const dataUrl = canvas.toDataURL(options);
-
-    downloadFile(dataUrl, "png", projectTitle);
+    const fullDataUrl = canvas.toDataURL(options);
+    const pages = capturePages();
     autoZoom();
+
+    if (pages.length === 0) {
+      // Single page: just the full image, no zip needed
+      downloadFile(fullDataUrl, extension, projectTitle);
+      return;
+    }
+
+    void downloadAsZip(fullDataUrl, pages, extension);
   };
 
-  const saveSvg = () => {
-    const options = generateSaveOptions();
-
-    canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
-    const dataUrl = canvas.toDataURL(options);
-
-    downloadFile(dataUrl, "svg", projectTitle);
-    autoZoom();
-  };
-
-  const saveJpg = () => {
-    const options = generateSaveOptions();
-
-    canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
-    const dataUrl = canvas.toDataURL(options);
-
-    downloadFile(dataUrl, "jpg", projectTitle);
-    autoZoom();
-  };
+  const savePng = () => saveImage("png");
+  const saveSvg = () => saveImage("svg");
+  const saveJpg = () => saveImage("jpg");
 
   const saveJson = async () => {
     const dataUrl = canvas.toJSON(JSON_KEYS);
@@ -182,10 +234,16 @@ const buildEditor = ({
         zoomRatio < 0.2 ? 0.2 : zoomRatio,
       );
     },
-    changeSize: (value: { width: number; height: number }) => {
+    changeSize: (value: { width: number; height: number; numPages: number }) => {
       const workspace = getWorkspace();
+      const numPages = Math.max(1, Math.floor(value.numPages));
 
-      workspace?.set(value);
+      workspace?.set({
+        width: value.width * numPages,
+        height: value.height,
+        // @ts-ignore - custom property persisted via JSON_KEYS
+        numPages,
+      });
       autoZoom();
       save();
       notifyChange();
@@ -785,6 +843,8 @@ export const useEditor = ({
         fill: "white",
         selectable: false,
         hasControls: false,
+        // @ts-ignore - custom property persisted via JSON_KEYS
+        numPages: DEFAULT_NUM_PAGES,
         shadow: new fabric.Shadow({
           color: "rgba(0,0,0,0.8)",
           blur: 5,

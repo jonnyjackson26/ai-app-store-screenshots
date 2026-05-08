@@ -28,14 +28,16 @@ interface JsonSidebarProps {
   editor: Editor | undefined;
   activeTool: ActiveTool;
   onChangeActiveTool: (tool: ActiveTool) => void;
+  aiApplying?: React.MutableRefObject<boolean>;
 };
 
 export const JsonSidebar = ({
   editor,
   activeTool,
   onChangeActiveTool,
+  aiApplying,
 }: JsonSidebarProps) => {
-  const { value, setValue, status, highlight } = useJsonSync(editor);
+  const { value, setValue, status, highlight } = useJsonSync(editor, aiApplying);
 
   const editorRef = useRef<MonacoEditorInstance | null>(null);
   const monacoRef = useRef<MonacoNamespace | null>(null);

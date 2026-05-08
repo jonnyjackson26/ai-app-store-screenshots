@@ -1,4 +1,4 @@
-# Minimal Canva Clone 
+# AI App Store Screenshots
 
 ## 🛠️ Tech Stack
 
@@ -9,9 +9,14 @@
 # setup
 ```
 cp .env.example .env
+npm i
+npm run dev
 ```
 
 
 create a new app on uploadthing.com (basic account with 2gb storage free)
 fill
 UPLOADTHING_TOKEN=
+
+
+This lives locally on wsl in canva-clone repo

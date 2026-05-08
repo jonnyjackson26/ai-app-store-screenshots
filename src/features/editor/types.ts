@@ -5,6 +5,7 @@ import * as material from "material-colors";
 
 export const JSON_KEYS = [
   "name",
+  "id",
   "gradientAngle",
   "selectable",
   "hasControls",
@@ -111,7 +112,8 @@ export type ActiveTool =
   | "filter"
   | "settings"
   | "templates"
-  | "json";
+  | "json"
+  | "ai";
 
 export const FILL_COLOR = "rgba(0,0,0,1)";
 export const STROKE_COLOR = "rgba(0,0,0,1)";

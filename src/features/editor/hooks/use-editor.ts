@@ -1,6 +1,7 @@
 import { fabric } from "fabric";
 import JSZip from "jszip";
 import { useCallback, useState, useMemo, useRef } from "react";
+import { uuid } from "uuidv4";
 
 import { 
   Editor, 
@@ -876,6 +877,17 @@ export const useEditor = ({
 
       initialCanvas.add(initialWorkspace);
       initialCanvas.centerObject(initialWorkspace);
+
+      // Stamp every newly-added object with a stable id. Persisted via
+      // JSON_KEYS so AI tool calls can reference objects across turns.
+      initialCanvas.on("object:added", (e: fabric.IEvent) => {
+        const target = e.target as
+          | (fabric.Object & { id?: string; name?: string })
+          | undefined;
+        if (!target) return;
+        if (target.name === "clip") return;
+        if (!target.id) target.id = uuid().slice(0, 8);
+      });
 
       // Separate clip rect (not added to _objects) sized to the *visual*
       // bounds (logical width + gap padding between pages). When pages and

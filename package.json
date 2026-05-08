@@ -33,6 +33,7 @@
     "material-colors": "^1.2.6",
     "next": "14.2.4",
     "next-themes": "^0.3.0",
+    "openai": "^6.37.0",
     "react": "^18",
     "react-color": "^2.19.3",
     "react-dom": "^18",

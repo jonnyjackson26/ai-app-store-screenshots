@@ -7,6 +7,7 @@ import {
   Pencil,
   Settings,
   Shapes,
+  Sparkles,
   Type,
 } from "lucide-react";
 
@@ -66,6 +67,12 @@ export const Sidebar = ({
           label="JSON"
           isActive={activeTool === "json"}
           onClick={() => onChangeActiveTool("json")}
+        />
+        <SidebarItem
+          icon={Sparkles}
+          label="AI"
+          isActive={activeTool === "ai"}
+          onClick={() => onChangeActiveTool("ai")}
         />
       </ul>
     </aside>

@@ -25,9 +25,13 @@ import { DrawSidebar } from "@/features/editor/components/draw-sidebar";
 import { TemplateSidebar } from "@/features/editor/components/template-sidebar";
 import { SettingsSidebar } from "@/features/editor/components/settings-sidebar";
 import { JsonSidebar } from "@/features/editor/components/json-sidebar";
+import { AiSidebar } from "@/features/ai/components/ai-sidebar";
 
 export const Editor = () => {
   const [activeTool, setActiveTool] = useState<ActiveTool>("select");
+  // Shared with useJsonSync (suppresses JSON-editor refresh during AI preview)
+  // and useAiChat (set true while applying ops to the canvas).
+  const aiApplying = useRef(false);
 
   const onClearSelection = useCallback(() => {
     if (selectionDependentTools.includes(activeTool)) {
@@ -152,6 +156,13 @@ export const Editor = () => {
           editor={editor}
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
+          aiApplying={aiApplying}
+        />
+        <AiSidebar
+          editor={editor}
+          activeTool={activeTool}
+          onChangeActiveTool={onChangeActiveTool}
+          aiApplying={aiApplying}
         />
         <main className="bg-muted flex-1 overflow-auto relative flex flex-col">
           <Toolbar

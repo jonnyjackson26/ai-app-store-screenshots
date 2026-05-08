@@ -26,10 +26,14 @@ export const useClipboard = ({
         top: clonedObj.top + 10,
         evented: true,
       });
+      // Clones inherit the source's id (now in JSON_KEYS); clear it so the
+      // canvas object:added listener stamps a fresh one.
+      clonedObj.id = undefined;
 
       if (clonedObj.type === "activeSelection") {
         clonedObj.canvas = canvas;
         clonedObj.forEachObject((obj: any) => {
+          obj.id = undefined;
           canvas?.add(obj);
         });
         clonedObj.setCoords();

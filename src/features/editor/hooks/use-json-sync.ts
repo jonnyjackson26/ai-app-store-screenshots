@@ -1,3 +1,4 @@
+import type { MutableRefObject } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import debounce from "lodash.debounce";
 
@@ -51,7 +52,10 @@ interface JsonStatus {
   message?: string;
 }
 
-export const useJsonSync = (editor: Editor | undefined) => {
+export const useJsonSync = (
+  editor: Editor | undefined,
+  aiApplying?: MutableRefObject<boolean>,
+) => {
   const canvas = editor?.canvas;
 
   const [value, setValueState] = useState<string>("");
@@ -150,6 +154,7 @@ export const useJsonSync = (editor: Editor | undefined) => {
       if (applyingFromJson.current) return;
       if (isTextEditing.current) return;
       if (pendingUserEdit.current) return;
+      if (aiApplying?.current) return;
       const next = serialize(canvas);
       const prev = valueRef.current;
       setValueState(next);

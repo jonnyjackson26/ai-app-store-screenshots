@@ -109,6 +109,28 @@ const buildDiff = (
       after: JSON.stringify(after, null, 2),
     };
   }
+  if (op.kind === "set_device_frame") {
+    const baseObj = findBaselineObject(baseline, op.targetId);
+    const baseFrame = (baseObj as AnyObject | null)?.deviceFrame ?? null;
+    const beforeProj: AnyObject = baseFrame
+      ? {
+          category: (baseFrame as AnyObject).category,
+          device: (baseFrame as AnyObject).device,
+          variation: (baseFrame as AnyObject).variation,
+        }
+      : { deviceFrame: null };
+    const afterProj: AnyObject = op.frame
+      ? {
+          category: op.frame.category,
+          device: op.frame.device,
+          variation: op.frame.variation,
+        }
+      : { deviceFrame: null };
+    return {
+      before: JSON.stringify(beforeProj, null, 2),
+      after: JSON.stringify(afterProj, null, 2),
+    };
+  }
   // set_page_settings: diff against the workspace + page fields
   const ws = findWorkspace(baseline);
   const before: AnyObject = {

@@ -202,9 +202,32 @@ export const ReadObjectSchema = z.object({
   targetId: z.string().min(1),
 });
 
+const DeviceFrameTupleSchema = z
+  .object({
+    category: z.enum([
+      "apple-iphone",
+      "apple-ipad",
+      "android-phone",
+      "android-tablet",
+    ]),
+    device: z.string().min(1),
+    variation: z.string().min(1),
+  })
+  .strict();
+
+export const SetDeviceFrameSchema = z
+  .object({
+    targetId: z.string().min(1),
+    // null clears the frame and reverts to the unframed source image.
+    frame: z.union([DeviceFrameTupleSchema, z.null()]),
+    summary: z.string().min(1).max(140),
+  })
+  .strict();
+
 export type ModifyObjectArgs = z.infer<typeof ModifyObjectSchema>;
 export type AddObjectArgs = z.infer<typeof AddObjectSchema>;
 export type RemoveObjectArgs = z.infer<typeof RemoveObjectSchema>;
 export type SetPageSettingsArgs = z.infer<typeof SetPageSettingsSchema>;
 export type SetZOrderArgs = z.infer<typeof SetZOrderSchema>;
 export type ReadObjectArgs = z.infer<typeof ReadObjectSchema>;
+export type SetDeviceFrameArgs = z.infer<typeof SetDeviceFrameSchema>;

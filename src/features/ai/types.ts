@@ -64,6 +64,15 @@ export interface SetZOrderOp {
   summary: string;
 }
 
+export interface SetDeviceFrameOp {
+  id: string;
+  kind: "set_device_frame";
+  targetId: string;
+  // null clears the frame and reverts the image to its unframed source.
+  frame: { category: string; device: string; variation: string } | null;
+  summary: string;
+}
+
 export type { GradientFill } from "@/features/editor/types";
 
 export type AiOp =
@@ -71,7 +80,14 @@ export type AiOp =
   | AddObjectOp
   | RemoveObjectOp
   | SetPageSettingsOp
-  | SetZOrderOp;
+  | SetZOrderOp
+  | SetDeviceFrameOp;
+
+export interface SceneDeviceFrame {
+  category: string;
+  device: string;
+  variation: string;
+}
 
 export interface SceneObject {
   id: string;
@@ -91,6 +107,7 @@ export interface SceneObject {
   fontWeight?: number;
   textAlign?: string;
   src?: string;
+  deviceFrame?: SceneDeviceFrame;
 }
 
 export interface ScenePage {

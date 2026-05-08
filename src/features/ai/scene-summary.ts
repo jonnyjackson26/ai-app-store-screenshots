@@ -1,7 +1,11 @@
 import type { fabric } from "fabric";
 import { uuid } from "uuidv4";
 
-import { DEFAULT_NUM_PAGES, DEFAULT_PAGE_GAP } from "@/features/editor/types";
+import {
+  DEFAULT_NUM_PAGES,
+  DEFAULT_PAGE_GAP,
+  type DeviceFrameMeta,
+} from "@/features/editor/types";
 import type { SceneObject, SceneSummary } from "./types";
 
 type ObjWithCustom = fabric.Object & {
@@ -15,6 +19,7 @@ type ObjWithCustom = fabric.Object & {
   fontWeight?: number;
   textAlign?: string;
   src?: string;
+  deviceFrame?: DeviceFrameMeta;
 };
 
 const round = (n: number | undefined): number =>
@@ -100,6 +105,13 @@ export const buildSceneSummary = (canvas: fabric.Canvas): SceneSummary => {
 
     if (obj.type === "image") {
       base.src = truncateSrc(obj.src);
+      if (obj.deviceFrame) {
+        base.deviceFrame = {
+          category: obj.deviceFrame.category,
+          device: obj.deviceFrame.device,
+          variation: obj.deviceFrame.variation,
+        };
+      }
     }
 
     return [base];
@@ -149,6 +161,11 @@ export const formatSceneForPrompt = (scene: SceneSummary): string => {
     if (o.textAlign != null) parts.push(`textAlign=${o.textAlign}`);
     if (o.text != null) parts.push(`text=${JSON.stringify(o.text)}`);
     if (o.src != null) parts.push(`src=${o.src}`);
+    if (o.deviceFrame != null) {
+      parts.push(
+        `deviceFrame=${o.deviceFrame.category}/${o.deviceFrame.device}/${o.deviceFrame.variation}`,
+      );
+    }
     lines.push(`  - ${parts.join(" ")}`);
   }
   return lines.join("\n");

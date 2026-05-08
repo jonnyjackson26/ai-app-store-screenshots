@@ -263,6 +263,54 @@ export const TOOL_DEFINITIONS = [
       },
     },
   },
+  {
+    type: "function" as const,
+    function: {
+      name: "set_device_frame",
+      description:
+        "Change (or remove) the device frame around an existing image. The scene's deviceFrame field tells you which images are framed and how; the device-frame catalog (in the developer message) lists every valid (category, device, variation) tuple. Pass `frame: null` to strip the frame and revert to the unframed screenshot.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        required: ["targetId", "frame", "summary"],
+        properties: {
+          targetId: {
+            type: "string",
+            description: "The id of an existing image object.",
+          },
+          frame: {
+            oneOf: [
+              {
+                type: "object",
+                additionalProperties: false,
+                required: ["category", "device", "variation"],
+                description:
+                  "Use exact slugs from the catalog. Example: { category: 'apple-iphone', device: '17-pro', variation: 'cosmic-orange' }.",
+                properties: {
+                  category: {
+                    type: "string",
+                    enum: [
+                      "apple-iphone",
+                      "apple-ipad",
+                      "android-phone",
+                      "android-tablet",
+                    ],
+                  },
+                  device: { type: "string" },
+                  variation: { type: "string" },
+                },
+              },
+              {
+                type: "null",
+                description: "Pass null to remove the device frame.",
+              },
+            ],
+          },
+          summary: { type: "string" },
+        },
+      },
+    },
+  },
 ];
 
 export const MODEL = "gpt-5-mini";

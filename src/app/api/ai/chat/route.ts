@@ -7,12 +7,18 @@ import {
   ModifyObjectSchema,
   ReadObjectSchema,
   RemoveObjectSchema,
+  SetDeviceFrameSchema,
   SetPageSettingsSchema,
   SetZOrderSchema,
 } from "@/features/ai/schemas";
 import { SYSTEM_PROMPT } from "@/features/ai/system-prompt";
 import { MODEL, TOOL_DEFINITIONS } from "@/features/ai/tools";
 import { formatSceneForPrompt, hashScene } from "@/features/ai/scene-summary";
+import {
+  buildCatalogIndex,
+  fetchDeviceFrameCatalog,
+  formatCatalogForPrompt,
+} from "@/features/device-frames/catalog";
 import type {
   AiOp,
   ChatMessage,
@@ -54,6 +60,7 @@ const buildOpFromToolCall = (
   name: string,
   args: unknown,
   scene: SceneSummary,
+  frameIndex: Set<string>,
 ): { ok: true; op: AiOp } | { ok: false; error: string } => {
   const validIds = new Set(scene.objects.map((o) => o.id));
 
@@ -162,6 +169,56 @@ const buildOpFromToolCall = (
     };
   }
 
+  if (name === "set_device_frame") {
+    const parsed = SetDeviceFrameSchema.safeParse(args);
+    if (!parsed.success) {
+      return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid args" };
+    }
+    if (!validIds.has(parsed.data.targetId)) {
+      return { ok: false, error: `Unknown object id "${parsed.data.targetId}".` };
+    }
+    const target = scene.objects.find((o) => o.id === parsed.data.targetId);
+    if (target?.type !== "image") {
+      return {
+        ok: false,
+        error: `Object "${parsed.data.targetId}" is type ${target?.type ?? "unknown"}; set_device_frame only applies to images.`,
+      };
+    }
+    if (parsed.data.frame !== null) {
+      const key = `${parsed.data.frame.category}::${parsed.data.frame.device}::${parsed.data.frame.variation}`;
+      if (!frameIndex.has(key)) {
+        return {
+          ok: false,
+          error: `Unknown frame ${parsed.data.frame.category}/${parsed.data.frame.device}/${parsed.data.frame.variation}. Use one of the valid (category, device, variation) tuples from the catalog.`,
+        };
+      }
+      // The image must already have a deviceFrame (so we know its sourceUrl).
+      // Without that, the AI would need to upload a screenshot, which it
+      // can't do — guard so the model doesn't try.
+      if (!target.deviceFrame) {
+        return {
+          ok: false,
+          error: `Image "${parsed.data.targetId}" has no existing deviceFrame; the user must apply a frame from the sidebar first before the AI can swap it.`,
+        };
+      }
+    } else if (!target.deviceFrame) {
+      return {
+        ok: false,
+        error: `Image "${parsed.data.targetId}" has no frame to remove.`,
+      };
+    }
+    return {
+      ok: true,
+      op: {
+        id: uuid().slice(0, 8),
+        kind: "set_device_frame",
+        targetId: parsed.data.targetId,
+        frame: parsed.data.frame,
+        summary: parsed.data.summary,
+      },
+    };
+  }
+
   return { ok: false, error: `Unknown tool: ${name}` };
 };
 
@@ -229,12 +286,36 @@ export async function POST(req: NextRequest) {
   const openai = new OpenAI({ apiKey });
   const trimmedHistory = body.messages.slice(-MAX_HISTORY);
 
+  // Fetch the device-frame catalog so the model knows the valid (category,
+  // device, variation) tuples and their hex colors. Cached at the upstream
+  // fetch level — typically a sub-millisecond HIT after the picker has
+  // warmed it.
+  let catalogPromptText: string | null = null;
+  let frameIndex = new Set<string>();
+  try {
+    const catalog = await fetchDeviceFrameCatalog();
+    catalogPromptText = formatCatalogForPrompt(catalog);
+    frameIndex = buildCatalogIndex(catalog);
+  } catch {
+    // Catalog fetch failure shouldn't block the chat — set_device_frame
+    // tool calls will be rejected by the empty index and the model can
+    // explain the failure.
+  }
+
   const baseMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
     { role: "system", content: SYSTEM_PROMPT },
     {
       role: "developer",
       content: `Available object IDs and scene follow:\n\n${formatSceneForPrompt(body.scene)}`,
     },
+    ...(catalogPromptText
+      ? [
+          {
+            role: "developer" as const,
+            content: `Device frame catalog (use these exact slugs in set_device_frame). Format is "<variation>#<hex_color>" so you can match colour requests:\n\n${catalogPromptText}`,
+          },
+        ]
+      : []),
     ...trimmedHistory.map<OpenAI.Chat.ChatCompletionMessageParam>((m) => ({
       role: m.role,
       content: m.content,
@@ -373,7 +454,12 @@ export async function POST(req: NextRequest) {
               continue;
             }
 
-            const result = buildOpFromToolCall(slot.name, parsedArgs, body.scene);
+            const result = buildOpFromToolCall(
+              slot.name,
+              parsedArgs,
+              body.scene,
+              frameIndex,
+            );
             if (result.ok) {
               opsEmittedThisTurn++;
               sendEvent(controller, encoder, { type: "op", op: result.op });

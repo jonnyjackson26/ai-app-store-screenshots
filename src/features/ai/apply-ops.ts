@@ -1,11 +1,15 @@
 import { fabric } from "fabric";
 
 import { JSON_KEYS } from "@/features/editor/types";
-import type { Editor } from "@/features/editor/types";
+import type { DeviceFrameMeta, Editor } from "@/features/editor/types";
 import { isGradientFill, materializeFill } from "@/features/editor/color-utils";
 import type { AiOp } from "./types";
 
-type ObjWithCustom = fabric.Object & { id?: string; name?: string };
+type ObjWithCustom = fabric.Object & {
+  id?: string;
+  name?: string;
+  deviceFrame?: DeviceFrameMeta;
+};
 
 const findById = (canvas: fabric.Canvas, id: string): fabric.Object | undefined =>
   canvas
@@ -152,6 +156,57 @@ export const applyOps = async (
       // back so user objects can never end up behind the page background.
       const workspace = editor.getWorkspace() as fabric.Object | undefined;
       workspace?.sendToBack();
+    } else if (op.kind === "set_device_frame") {
+      const target = findById(canvas, op.targetId);
+      if (!target || target.type !== "image") continue;
+      const image = target as fabric.Image;
+      const existing = (image as ObjWithCustom).deviceFrame;
+      if (op.frame === null) {
+        if (!existing) continue;
+        // Restore the unframed screenshot. Mirrors removeDeviceFrameFromSelected.
+        const center = image.getCenterPoint();
+        const origScaledWidth = image.getScaledWidth();
+        const origScaledHeight = image.getScaledHeight();
+        const angle = image.angle ?? 0;
+        await new Promise<void>((resolve) => {
+          image.setSrc(
+            existing.sourceUrl,
+            () => {
+              const naturalWidth = image.width ?? origScaledWidth;
+              const naturalHeight = image.height ?? origScaledHeight;
+              const scale = Math.min(
+                origScaledWidth / naturalWidth,
+                origScaledHeight / naturalHeight,
+              );
+              image.set({
+                scaleX: scale,
+                scaleY: scale,
+                angle,
+                originX: "center",
+                originY: "center",
+                left: center.x,
+                top: center.y,
+              });
+              (image as ObjWithCustom).deviceFrame = undefined;
+              image.setCoords();
+              resolve();
+            },
+            { crossOrigin: "anonymous" },
+          );
+        });
+      } else {
+        if (!existing) continue;
+        // Update the metadata; leave cachedKey on the OLD value so the
+        // post-applyOps reconcileDeviceFrames() picks up the mismatch and
+        // re-bakes the framed PNG.
+        (image as ObjWithCustom).deviceFrame = {
+          category: op.frame.category,
+          device: op.frame.device,
+          variation: op.frame.variation,
+          sourceUrl: existing.sourceUrl,
+          cachedKey: existing.cachedKey,
+        };
+      }
     } else if (op.kind === "set_page_settings") {
       const workspace = editor.getWorkspace() as fabric.Rect | undefined;
       if (!workspace) continue;

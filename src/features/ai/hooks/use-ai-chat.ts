@@ -135,6 +135,12 @@ export const useAiChat = (
           ed.skipSave.current = true;
           try {
             await applyOps(ed, finalOps);
+            // If any set_device_frame op left a deviceFrame whose cachedKey
+            // disagrees with its current variation, this re-bakes the framed
+            // PNG via the apply route and updates the image src in place.
+            if (finalOps.some((o) => o.kind === "set_device_frame")) {
+              await ed.reconcileDeviceFrames();
+            }
           } catch (applyErr) {
             await restoreSnapshot(ed.canvas, baselineJson);
             throw applyErr;

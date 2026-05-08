@@ -21,6 +21,11 @@ const opKindLabel = (op: AiOp): string => {
   if (op.kind === "modify_object") return "Modify";
   if (op.kind === "add_object") return `Add ${op.objectType}`;
   if (op.kind === "remove_object") return "Remove";
+  if (op.kind === "set_z_order") {
+    return op.relativeToId
+      ? `Reorder · ${op.position} ${op.relativeToId}`
+      : `Reorder · ${op.position}`;
+  }
   return "Page settings";
 };
 
@@ -93,6 +98,17 @@ const buildDiff = (
       ),
     };
   }
+  if (op.kind === "set_z_order") {
+    const after: AnyObject = {
+      targetId: op.targetId,
+      position: op.position,
+    };
+    if (op.relativeToId) after.relativeToId = op.relativeToId;
+    return {
+      before: "",
+      after: JSON.stringify(after, null, 2),
+    };
+  }
   // set_page_settings: diff against the workspace + page fields
   const ws = findWorkspace(baseline);
   const before: AnyObject = {
@@ -140,7 +156,9 @@ export const OpRow = ({ op, baselineJson }: OpRowProps) => {
           <p className="font-medium leading-tight">{op.summary}</p>
           <p className="text-[10px] text-muted-foreground uppercase tracking-wide mt-0.5">
             {opKindLabel(op)}
-            {(op.kind === "modify_object" || op.kind === "remove_object") &&
+            {(op.kind === "modify_object" ||
+              op.kind === "remove_object" ||
+              op.kind === "set_z_order") &&
               ` · ${op.targetId}`}
           </p>
         </div>

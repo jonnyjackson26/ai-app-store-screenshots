@@ -4,6 +4,44 @@ import { fonts } from "@/features/editor/types";
 
 const fontEnum = fonts as unknown as [string, ...string[]];
 
+// Reject CSS gradient strings ("linear-gradient(...)", etc). Fabric does not
+// parse those — gradients use the structured GradientFill shape.
+const ColorStringSchema = z
+  .string()
+  .max(80)
+  .refine(
+    (s) => !/-gradient\s*\(/i.test(s),
+    "fill must be a solid color string (hex / rgb / rgba / named). Use the structured gradient shape for gradients.",
+  );
+
+const GradientFillSchema = z
+  .object({
+    type: z.enum(["linear", "radial"]),
+    coords: z
+      .object({
+        x1: z.number(),
+        y1: z.number(),
+        x2: z.number(),
+        y2: z.number(),
+        r1: z.number().optional(),
+        r2: z.number().optional(),
+      })
+      .strict(),
+    colorStops: z
+      .array(
+        z
+          .object({
+            offset: z.number().min(0).max(1),
+            color: ColorStringSchema,
+          })
+          .strict(),
+      )
+      .min(2),
+  })
+  .strict();
+
+const FillSchema = z.union([ColorStringSchema, GradientFillSchema]);
+
 // Common props the AI can set/modify. Permissive on purpose — Fabric accepts
 // many fields and over-restricting forces the AI to delete-and-re-add when a
 // simple edit would do.
@@ -15,8 +53,8 @@ const ModifyProps = z
     height: z.number().nonnegative().optional(),
     angle: z.number().optional(),
     opacity: z.number().min(0).max(1).optional(),
-    fill: z.string().optional(),
-    stroke: z.string().nullable().optional(),
+    fill: FillSchema.optional(),
+    stroke: ColorStringSchema.nullable().optional(),
     strokeWidth: z.number().nonnegative().optional(),
     rx: z.number().nonnegative().optional(),
     ry: z.number().nonnegative().optional(),
@@ -122,10 +160,43 @@ export const SetPageSettingsSchema = z
     pageGap: z.number().nonnegative().optional(),
     width: z.number().positive().optional(),
     height: z.number().positive().optional(),
-    background: z.string().optional(),
+    background: ColorStringSchema.optional(),
     summary: z.string().min(1).max(140),
   })
   .strict();
+
+export const SetZOrderSchema = z
+  .object({
+    targetId: z.string().min(1),
+    position: z.enum([
+      "front",
+      "back",
+      "forward",
+      "backward",
+      "above",
+      "below",
+    ]),
+    relativeToId: z.string().min(1).optional(),
+    summary: z.string().min(1).max(140),
+  })
+  .refine(
+    (v) =>
+      (v.position === "above" || v.position === "below")
+        ? !!v.relativeToId
+        : true,
+    {
+      message:
+        "relativeToId is required when position is 'above' or 'below' — name the object to place the target relative to.",
+      path: ["relativeToId"],
+    },
+  )
+  .refine(
+    (v) => v.relativeToId !== v.targetId,
+    {
+      message: "relativeToId must differ from targetId.",
+      path: ["relativeToId"],
+    },
+  );
 
 export const ReadObjectSchema = z.object({
   targetId: z.string().min(1),
@@ -135,4 +206,5 @@ export type ModifyObjectArgs = z.infer<typeof ModifyObjectSchema>;
 export type AddObjectArgs = z.infer<typeof AddObjectSchema>;
 export type RemoveObjectArgs = z.infer<typeof RemoveObjectSchema>;
 export type SetPageSettingsArgs = z.infer<typeof SetPageSettingsSchema>;
+export type SetZOrderArgs = z.infer<typeof SetZOrderSchema>;
 export type ReadObjectArgs = z.infer<typeof ReadObjectSchema>;

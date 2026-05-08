@@ -6,6 +6,55 @@ import { fonts } from "@/features/editor/types";
 
 const fontEnum = [...fonts];
 
+// fill / background can be a solid color string OR a structured Fabric
+// gradient. CSS gradient strings ("linear-gradient(...)") are NOT valid —
+// the Zod refinement in schemas.ts rejects them and feeds an error back to
+// the model.
+const fillSchema = {
+  oneOf: [
+    {
+      type: "string",
+      description:
+        "Solid color: hex (#fff, #ff8800), rgb()/rgba(), or named color. Do NOT use CSS gradient syntax.",
+    },
+    {
+      type: "object",
+      description: "Fabric gradient. coords expect canvas-space pixels.",
+      additionalProperties: false,
+      required: ["type", "coords", "colorStops"],
+      properties: {
+        type: { type: "string", enum: ["linear", "radial"] },
+        coords: {
+          type: "object",
+          additionalProperties: false,
+          required: ["x1", "y1", "x2", "y2"],
+          properties: {
+            x1: { type: "number" },
+            y1: { type: "number" },
+            x2: { type: "number" },
+            y2: { type: "number" },
+            r1: { type: "number", description: "Inner radius (radial only)." },
+            r2: { type: "number", description: "Outer radius (radial only)." },
+          },
+        },
+        colorStops: {
+          type: "array",
+          minItems: 2,
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["offset", "color"],
+            properties: {
+              offset: { type: "number", minimum: 0, maximum: 1 },
+              color: { type: "string", description: "Solid color string." },
+            },
+          },
+        },
+      },
+    },
+  ],
+} as const;
+
 const modifyProps = {
   type: "object",
   additionalProperties: false,
@@ -16,8 +65,13 @@ const modifyProps = {
     height: { type: "number", minimum: 0 },
     angle: { type: "number" },
     opacity: { type: "number", minimum: 0, maximum: 1 },
-    fill: { type: "string" },
-    stroke: { type: ["string", "null"] },
+    fill: fillSchema,
+    stroke: {
+      oneOf: [
+        { type: "string", description: "Solid color string. Do NOT use CSS gradients." },
+        { type: "null" },
+      ],
+    },
     strokeWidth: { type: "number", minimum: 0 },
     rx: { type: "number", minimum: 0 },
     ry: { type: "number", minimum: 0 },
@@ -101,8 +155,13 @@ export const TOOL_DEFINITIONS = [
                   },
                 },
               },
-              fill: { type: "string" },
-              stroke: { type: ["string", "null"] },
+              fill: fillSchema,
+              stroke: {
+                oneOf: [
+                  { type: "string" },
+                  { type: "null" },
+                ],
+              },
               strokeWidth: { type: "number" },
               fontSize: { type: "number" },
               fontFamily: { type: "string", enum: fontEnum },
@@ -153,7 +212,36 @@ export const TOOL_DEFINITIONS = [
           pageGap: { type: "number", minimum: 0 },
           width: { type: "number", exclusiveMinimum: 0 },
           height: { type: "number", exclusiveMinimum: 0 },
-          background: { type: "string" },
+          background: {
+            type: "string",
+            description: "Solid color string. Do NOT use CSS gradients.",
+          },
+          summary: { type: "string" },
+        },
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "set_z_order",
+      description:
+        "Change the stacking order of an existing object by reordering it in the document's object array (higher index draws on top). Positions: 'front' / 'back' move it to the absolute top / bottom of user objects; 'forward' / 'backward' move it one step; 'above' / 'below' place it just above / below another object identified by relativeToId.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        required: ["targetId", "position", "summary"],
+        properties: {
+          targetId: { type: "string" },
+          position: {
+            type: "string",
+            enum: ["front", "back", "forward", "backward", "above", "below"],
+          },
+          relativeToId: {
+            type: "string",
+            description:
+              "Required when position is 'above' or 'below': the id of the reference object the target should sit adjacent to.",
+          },
           summary: { type: "string" },
         },
       },

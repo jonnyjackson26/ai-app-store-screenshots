@@ -8,6 +8,7 @@ import {
   ReadObjectSchema,
   RemoveObjectSchema,
   SetPageSettingsSchema,
+  SetZOrderSchema,
 } from "@/features/ai/schemas";
 import { SYSTEM_PROMPT } from "@/features/ai/system-prompt";
 import { MODEL, TOOL_DEFINITIONS } from "@/features/ai/tools";
@@ -130,6 +131,33 @@ const buildOpFromToolCall = (
         kind: "set_page_settings",
         props: rest,
         summary,
+      },
+    };
+  }
+
+  if (name === "set_z_order") {
+    const parsed = SetZOrderSchema.safeParse(args);
+    if (!parsed.success) {
+      return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid args" };
+    }
+    if (!validIds.has(parsed.data.targetId)) {
+      return { ok: false, error: `Unknown object id "${parsed.data.targetId}".` };
+    }
+    if (parsed.data.relativeToId && !validIds.has(parsed.data.relativeToId)) {
+      return {
+        ok: false,
+        error: `Unknown relativeToId "${parsed.data.relativeToId}".`,
+      };
+    }
+    return {
+      ok: true,
+      op: {
+        id: uuid().slice(0, 8),
+        kind: "set_z_order",
+        targetId: parsed.data.targetId,
+        position: parsed.data.position,
+        relativeToId: parsed.data.relativeToId,
+        summary: parsed.data.summary,
       },
     };
   }

@@ -2,7 +2,7 @@ import { fabric } from "fabric";
 
 import { JSON_KEYS } from "@/features/editor/types";
 import type { Editor } from "@/features/editor/types";
-import type { AiOp } from "./types";
+import type { AiOp, GradientFill } from "./types";
 
 type ObjWithCustom = fabric.Object & { id?: string; name?: string };
 
@@ -11,10 +11,37 @@ const findById = (canvas: fabric.Canvas, id: string): fabric.Object | undefined 
     .getObjects()
     .find((o) => (o as ObjWithCustom).id === id) as fabric.Object | undefined;
 
+const isGradientFill = (value: unknown): value is GradientFill =>
+  !!value &&
+  typeof value === "object" &&
+  "type" in (value as Record<string, unknown>) &&
+  "colorStops" in (value as Record<string, unknown>);
+
+// Convert a structured GradientFill into a fabric.Gradient instance. Plain
+// color strings pass through unchanged.
+const materializeFill = (value: unknown): unknown => {
+  if (!isGradientFill(value)) return value;
+  return new fabric.Gradient({
+    type: value.type,
+    coords: value.coords,
+    colorStops: value.colorStops,
+  });
+};
+
+// Walk the props record and replace any gradient-shaped value with a real
+// fabric.Gradient. Right now this only matters for `fill`, but kept generic
+// in case we expose stroke gradients later.
+const materializeProps = (
+  props: Record<string, unknown>,
+): Record<string, unknown> => {
+  if (!("fill" in props)) return props;
+  return { ...props, fill: materializeFill(props.fill) };
+};
+
 const buildAddObject = async (
   op: Extract<AiOp, { kind: "add_object" }>,
 ): Promise<fabric.Object | null> => {
-  const raw = { ...(op.props as Record<string, unknown>) };
+  const raw = materializeProps({ ...(op.props as Record<string, unknown>) });
   switch (op.objectType) {
     case "textbox": {
       const text = typeof raw.text === "string" ? raw.text : "";
@@ -82,7 +109,8 @@ export const applyOps = async (
     if (op.kind === "modify_object") {
       const target = findById(canvas, op.targetId);
       if (!target) continue;
-      target.set(op.props as Partial<fabric.IObjectOptions>);
+      const props = materializeProps(op.props as Record<string, unknown>);
+      target.set(props as Partial<fabric.IObjectOptions>);
       target.setCoords();
     } else if (op.kind === "add_object") {
       const obj = await buildAddObject(op);
@@ -92,6 +120,50 @@ export const applyOps = async (
       const target = findById(canvas, op.targetId);
       if (!target) continue;
       canvas.remove(target);
+    } else if (op.kind === "set_z_order") {
+      const target = findById(canvas, op.targetId);
+      if (!target) continue;
+      switch (op.position) {
+        case "front":
+          canvas.bringToFront(target);
+          break;
+        case "back":
+          canvas.sendToBack(target);
+          break;
+        case "forward":
+          canvas.bringForward(target);
+          break;
+        case "backward":
+          canvas.sendBackwards(target);
+          break;
+        case "above":
+        case "below": {
+          if (!op.relativeToId) break;
+          const ref = findById(canvas, op.relativeToId);
+          if (!ref) break;
+          const objs = canvas.getObjects();
+          const ti = objs.indexOf(target);
+          const ri = objs.indexOf(ref);
+          if (ti < 0 || ri < 0) break;
+          // After Fabric's moveTo (remove + splice), the object lands at the
+          // given index. To put target above ref (drawn later) we want target
+          // immediately after ref's final position; below = immediately before.
+          const destIndex =
+            op.position === "above"
+              ? ti < ri
+                ? ri
+                : ri + 1
+              : ti < ri
+                ? ri - 1
+                : ri;
+          canvas.moveTo(target, destIndex);
+          break;
+        }
+      }
+      // Match the toolbar's invariant: keep the workspace clip pinned at the
+      // back so user objects can never end up behind the page background.
+      const workspace = editor.getWorkspace() as fabric.Object | undefined;
+      workspace?.sendToBack();
     } else if (op.kind === "set_page_settings") {
       const workspace = editor.getWorkspace() as fabric.Rect | undefined;
       if (!workspace) continue;

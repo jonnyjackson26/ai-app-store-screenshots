@@ -45,11 +45,44 @@ export interface SetPageSettingsOp {
   summary: string;
 }
 
+export type ZOrderPosition =
+  | "front"
+  | "back"
+  | "forward"
+  | "backward"
+  | "above"
+  | "below";
+
+export interface SetZOrderOp {
+  id: string;
+  kind: "set_z_order";
+  targetId: string;
+  position: ZOrderPosition;
+  // Required when position is "above" or "below": the id of the reference
+  // object the target should be placed adjacent to.
+  relativeToId?: string;
+  summary: string;
+}
+
+export interface GradientFill {
+  type: "linear" | "radial";
+  coords: {
+    x1: number;
+    y1: number;
+    x2: number;
+    y2: number;
+    r1?: number;
+    r2?: number;
+  };
+  colorStops: { offset: number; color: string }[];
+}
+
 export type AiOp =
   | ModifyObjectOp
   | AddObjectOp
   | RemoveObjectOp
-  | SetPageSettingsOp;
+  | SetPageSettingsOp
+  | SetZOrderOp;
 
 export interface SceneObject {
   id: string;

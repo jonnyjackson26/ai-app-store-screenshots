@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Check,
-  History,
   Loader2,
   Send,
   Sparkles,
@@ -19,7 +18,6 @@ import { useAiChat } from "@/features/ai/hooks/use-ai-chat";
 import { OpRow } from "@/features/ai/components/op-row";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
 interface AiSidebarProps {
@@ -75,9 +73,8 @@ export const AiSidebar = ({
   };
 
   const onRevert = (turnId: string) => {
-    const turn = turns.find((t) => t.id === turnId);
-    if (!turn) return;
     const idx = turns.findIndex((t) => t.id === turnId);
+    if (idx < 0) return;
     const laterCount = turns.length - 1 - idx;
     if (laterCount > 0) {
       const ok = window.confirm(
@@ -101,7 +98,7 @@ export const AiSidebar = ({
       />
 
       <div ref={transcriptRef} className="flex-1 min-h-0 overflow-y-auto p-3 space-y-3">
-        {messages.length === 0 && !current && turns.length === 0 && (
+        {messages.length === 0 && !current && (
           <div className="text-xs text-muted-foreground space-y-2">
             <p className="flex items-center gap-x-1.5">
               <Sparkles className="size-3.5" />
@@ -126,9 +123,22 @@ export const AiSidebar = ({
                 : "bg-muted/40 border",
             )}
           >
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">
-              {m.role}
-            </p>
+            <div className="flex items-start justify-between gap-x-2 mb-1">
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                {m.role}
+              </p>
+              {m.turnId && (
+                <button
+                  type="button"
+                  onClick={() => onRevert(m.turnId!)}
+                  className="text-[10px] text-muted-foreground hover:text-destructive transition-colors flex items-center gap-x-1"
+                  title="Revert to before this change"
+                >
+                  <Undo2 className="size-3" />
+                  Revert
+                </button>
+              )}
+            </div>
             <p className="whitespace-pre-wrap">{m.content}</p>
           </div>
         ))}
@@ -152,6 +162,7 @@ export const AiSidebar = ({
                     checked={current.checkedIds.has(op.id)}
                     onToggle={() => toggleOp(op.id)}
                     disabled={current.status !== "previewing"}
+                    baselineJson={current.baselineJson}
                   />
                 ))}
               </div>
@@ -195,38 +206,6 @@ export const AiSidebar = ({
         )}
       </div>
 
-      {turns.length > 0 && (
-        <div className="border-t p-3 space-y-2">
-          <p className="text-[10px] uppercase tracking-wide text-muted-foreground flex items-center gap-x-1">
-            <History className="size-3" />
-            Past turns
-          </p>
-          <ScrollArea className="max-h-[120px]">
-            <div className="space-y-1">
-              {turns.map((t) => (
-                <div
-                  key={t.id}
-                  className="flex items-center gap-x-2 text-xs"
-                >
-                  <span className="flex-1 truncate" title={t.prompt}>
-                    {t.prompt}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => onRevert(t.id)}
-                    className="text-muted-foreground hover:text-destructive transition-colors flex items-center gap-x-1"
-                    title="Revert to before this turn"
-                  >
-                    <Undo2 className="size-3" />
-                    Revert
-                  </button>
-                </div>
-              ))}
-            </div>
-          </ScrollArea>
-        </div>
-      )}
-
       <form onSubmit={onSubmit} className="border-t p-3 space-y-2">
         <Textarea
           value={input}
@@ -257,7 +236,7 @@ export const AiSidebar = ({
               </>
             )}
           </Button>
-          {(messages.length > 0 || turns.length > 0) && (
+          {messages.length > 0 && (
             <Button
               type="button"
               size="sm"

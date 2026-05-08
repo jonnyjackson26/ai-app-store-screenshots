@@ -100,6 +100,10 @@ export interface ChatMessage {
   // turns. The model sees these as "applied" so follow-ups like "now make
   // it bigger" work.
   appliedOps?: AiOp[];
+  // Links an assistant message to its committed Turn (for the inline
+  // Revert button). Only set on assistant messages that committed at
+  // least one op.
+  turnId?: string;
 }
 
 // Client-side: a committed turn the user can revert to.

@@ -38,4 +38,4 @@ User: "Make all the headlines bigger"
 User: "Add a new page"
 → set_page_settings(numPages=<current+1>, summary="Add a new page (now N pages)")
 
-If you've completed the user's request, end with a brief friendly confirmation. If you couldn't fully complete it, explain what you did and what's still needed.`;
+Always include a short text reply (1-2 sentences) summarizing what you did or asking a clarifying question. The text reply is required even when you also call tools. Examples: "Updated the title and resized the hero." / "Made all body text 18pt." / "I'm not sure which element you mean — could you point to it?"`;

@@ -206,7 +206,6 @@ export const useAiChat = (
     const turn = currentRef.current;
     const ed = editorRef.current;
     if (!turn || !ed) return;
-    // Make sure the canvas reflects the final checked set before saving.
     if (reapplyTimeoutRef.current) {
       clearTimeout(reapplyTimeoutRef.current);
       reapplyTimeoutRef.current = null;
@@ -222,33 +221,22 @@ export const useAiChat = (
     aiApplying.current = false;
     ed.save();
 
-    setMessages((prev) => {
-      // Attach applied ops to the last assistant message (or push one if
-      // the model didn't emit text). This is the conversation context the
-      // server uses to keep follow-ups grounded.
-      const last = prev[prev.length - 1];
-      if (last?.role === "assistant") {
-        const updated: ChatMessage = {
-          ...last,
-          content: turn.responseText || last.content,
-          appliedOps: accepted,
-        };
-        return [...prev.slice(0, -1), updated];
-      }
-      return [
-        ...prev,
-        {
-          role: "assistant",
-          content: turn.responseText || "(applied edits)",
-          appliedOps: accepted,
-        },
-      ];
-    });
+    const turnId = uuid().slice(0, 8);
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: "assistant",
+        content: turn.responseText || "Done.",
+        appliedOps: accepted,
+        turnId: accepted.length > 0 ? turnId : undefined,
+      },
+    ]);
 
     setTurns((prev) => [
       ...prev,
       {
-        id: uuid().slice(0, 8),
+        id: turnId,
         prompt: turn.prompt,
         responseText: turn.responseText,
         ops: turn.ops,
@@ -299,22 +287,14 @@ export const useAiChat = (
       aiApplying.current = false;
       ed.save();
       setTurns((prev) => prev.slice(0, idx));
-      // Trim chat messages back to before this turn's user message. We
-      // approximate by counting accepted assistant turns.
+      // Drop messages from this turn onward — the assistant message with
+      // matching turnId, the preceding user message, and anything after.
       setMessages((prev) => {
-        let assistantSeen = 0;
-        for (let i = 0; i < prev.length; i++) {
-          if (prev[i].role === "assistant" && prev[i].appliedOps?.length) {
-            if (assistantSeen === idx) {
-              // Find the user message just before this assistant.
-              let cut = i;
-              while (cut > 0 && prev[cut - 1].role === "user") cut--;
-              return prev.slice(0, cut);
-            }
-            assistantSeen++;
-          }
-        }
-        return prev;
+        const msgIdx = prev.findIndex((m) => m.turnId === turnId);
+        if (msgIdx < 0) return prev;
+        let cut = msgIdx;
+        while (cut > 0 && prev[cut - 1].role === "user") cut--;
+        return prev.slice(0, cut);
       });
     },
     [turns, aiApplying],

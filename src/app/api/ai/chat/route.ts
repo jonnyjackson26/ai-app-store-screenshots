@@ -23,7 +23,11 @@ export const runtime = "nodejs";
 const MAX_HISTORY = 12;
 const MAX_READ_OBJECT_PER_TURN = 3;
 const MAX_RETRIES = 2;
-const MAX_COMPLETION_TOKENS = 800;
+// gpt-5-mini is a reasoning model — output tokens are split between hidden
+// reasoning and visible content. With reasoning_effort: "minimal" the
+// reasoning budget collapses to ~0 and tokens behave like a normal model,
+// but we still leave headroom for tool-call args + a short chat reply.
+const MAX_COMPLETION_TOKENS = 2000;
 
 interface RequestBody {
   messages: ChatMessage[];
@@ -222,6 +226,7 @@ export async function POST(req: NextRequest) {
             tool_choice: "auto",
             stream: true,
             max_completion_tokens: MAX_COMPLETION_TOKENS,
+            reasoning_effort: "minimal",
           });
 
           let assistantContent = "";

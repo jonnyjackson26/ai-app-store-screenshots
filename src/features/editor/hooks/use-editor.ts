@@ -20,6 +20,7 @@ import {
   FONT_SIZE,
   JSON_KEYS,
   DEFAULT_NUM_PAGES,
+  DEFAULT_PAGE_GAP,
 } from "@/features/editor/types";
 import { useHistory } from "@/features/editor/hooks/use-history";
 import { 
@@ -234,17 +235,34 @@ const buildEditor = ({
         zoomRatio < 0.2 ? 0.2 : zoomRatio,
       );
     },
-    changeSize: (value: { width: number; height: number; numPages: number }) => {
+    changeSize: (value: { width: number; height: number; numPages: number; pageGap: number }) => {
       const workspace = getWorkspace();
       const numPages = Math.max(1, Math.floor(value.numPages));
+      const pageGap = Math.max(0, value.pageGap);
+      const logicalWidth = value.width * numPages;
+      const visualWidth = logicalWidth + Math.max(0, numPages - 1) * pageGap;
 
       workspace?.set({
-        width: value.width * numPages,
+        width: logicalWidth,
         height: value.height,
         // @ts-ignore - custom property persisted via JSON_KEYS
         numPages,
+        // @ts-ignore - custom property persisted via JSON_KEYS
+        pageGap,
       });
+
+      const clip = canvas.clipPath as fabric.Rect | undefined;
+      if (clip && workspace) {
+        clip.set({
+          left: workspace.left,
+          top: workspace.top,
+          width: visualWidth,
+          height: value.height,
+        });
+      }
+
       autoZoom();
+      canvas.requestRenderAll();
       save();
       notifyChange();
     },
@@ -845,6 +863,8 @@ export const useEditor = ({
         hasControls: false,
         // @ts-ignore - custom property persisted via JSON_KEYS
         numPages: DEFAULT_NUM_PAGES,
+        // @ts-ignore - custom property persisted via JSON_KEYS
+        pageGap: DEFAULT_PAGE_GAP,
         shadow: new fabric.Shadow({
           color: "rgba(0,0,0,0.8)",
           blur: 5,
@@ -856,7 +876,82 @@ export const useEditor = ({
 
       initialCanvas.add(initialWorkspace);
       initialCanvas.centerObject(initialWorkspace);
-      initialCanvas.clipPath = initialWorkspace;
+
+      // Separate clip rect (not added to _objects) sized to the *visual*
+      // bounds (logical width + gap padding between pages). When pages and
+      // gaps are configured this is wider than the workspace, so the
+      // shifted page renders below aren't cut off by the canvas-level clip.
+      const clipShape = new fabric.Rect({
+        left: initialWorkspace.left,
+        top: initialWorkspace.top,
+        width: initialWorkspace.width,
+        height: initialWorkspace.height,
+      });
+      initialCanvas.clipPath = clipShape;
+
+      // Per-page render shift. Each page is drawn into its own visual
+      // region, with the rendering translated by `p × pageGap` so the
+      // design's logical x-axis is continuous: an image straddling a
+      // boundary appears split across the gap with no pixel data lost.
+      // Skipped during export (toCanvasElement uses a different ctx),
+      // so exports remain at the logical, gap-free coordinate system.
+      const canvasWithCtx = initialCanvas as fabric.Canvas & {
+        contextContainer: CanvasRenderingContext2D;
+        _renderObjects: (
+          ctx: CanvasRenderingContext2D,
+          objects: fabric.Object[],
+        ) => void;
+      };
+      const defaultRenderObjects = canvasWithCtx._renderObjects.bind(initialCanvas);
+      canvasWithCtx._renderObjects = (
+        ctx: CanvasRenderingContext2D,
+        objects: fabric.Object[],
+      ) => {
+        const workspace = initialCanvas
+          .getObjects()
+          .find((o) => o.name === "clip") as
+          | (fabric.Rect & { numPages?: number; pageGap?: number })
+          | undefined;
+
+        const numPages = Math.max(
+          1,
+          Math.floor(workspace?.numPages ?? DEFAULT_NUM_PAGES),
+        );
+        const pageGap = Math.max(0, workspace?.pageGap ?? DEFAULT_PAGE_GAP);
+
+        if (
+          ctx !== canvasWithCtx.contextContainer ||
+          !workspace ||
+          numPages <= 1 ||
+          pageGap <= 0
+        ) {
+          defaultRenderObjects(ctx, objects);
+          return;
+        }
+
+        const totalLogicalWidth = workspace.width ?? 0;
+        const pageWidth = totalLogicalWidth / numPages;
+        const wsLeft = workspace.left ?? 0;
+        const wsTop = workspace.top ?? 0;
+        const wsHeight = workspace.height ?? 0;
+
+        for (let p = 0; p < numPages; p++) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(
+            wsLeft + p * pageWidth + p * pageGap,
+            wsTop,
+            pageWidth,
+            wsHeight,
+          );
+          ctx.clip();
+          ctx.translate(p * pageGap, 0);
+          for (let i = 0, len = objects.length; i < len; i++) {
+            objects[i] && objects[i].render(ctx);
+          }
+          ctx.restore();
+        }
+      };
 
       setCanvas(initialCanvas);
       setContainer(initialContainer);

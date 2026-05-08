@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { ActiveTool, DEFAULT_NUM_PAGES, Editor } from "@/features/editor/types";
+import {
+  ActiveTool,
+  DEFAULT_NUM_PAGES,
+  DEFAULT_PAGE_GAP,
+  Editor,
+} from "@/features/editor/types";
 import { ToolSidebarClose } from "@/features/editor/components/tool-sidebar-close";
 import { ToolSidebarHeader } from "@/features/editor/components/tool-sidebar-header";
 import { ColorPicker } from "@/features/editor/components/color-picker";
@@ -34,29 +39,38 @@ export const SettingsSidebar = ({
     const pages = parseInt(initialNumPages, 10) || DEFAULT_NUM_PAGES;
     return `${Math.round(totalWidth / pages)}`;
   }, [workspace, initialNumPages]);
+  const initialPageGap = useMemo(() => {
+    const raw = (workspace as (fabric.Object & { pageGap?: number }) | undefined)?.pageGap;
+    const parsed = typeof raw === "number" && raw >= 0 ? raw : DEFAULT_PAGE_GAP;
+    return `${parsed}`;
+  }, [workspace]);
   const initialHeight = useMemo(() => `${workspace?.height ?? 0}`, [workspace]);
   const initialBackground = useMemo(() => workspace?.fill ?? "#ffffff", [workspace]);
 
   const [pageWidth, setPageWidth] = useState(initialPageWidth);
   const [numPages, setNumPages] = useState(initialNumPages);
+  const [pageGap, setPageGap] = useState(initialPageGap);
   const [height, setHeight] = useState(initialHeight);
   const [background, setBackground] = useState(initialBackground);
 
   useEffect(() => {
     setPageWidth(initialPageWidth);
     setNumPages(initialNumPages);
+    setPageGap(initialPageGap);
     setHeight(initialHeight);
     setBackground(initialBackground);
   },
   [
     initialPageWidth,
     initialNumPages,
+    initialPageGap,
     initialHeight,
     initialBackground
   ]);
 
   const changePageWidth = (value: string) => setPageWidth(value);
   const changeNumPages = (value: string) => setNumPages(value);
+  const changePageGap = (value: string) => setPageGap(value);
   const changeHeight = (value: string) => setHeight(value);
   const changeBackground = (value: string) => {
     setBackground(value);
@@ -70,6 +84,7 @@ export const SettingsSidebar = ({
       width: parseInt(pageWidth, 10),
       height: parseInt(height, 10),
       numPages: parseInt(numPages, 10),
+      pageGap: parseInt(pageGap, 10) || 0,
     });
   }
 
@@ -123,6 +138,19 @@ export const SettingsSidebar = ({
               min={1}
               step={1}
               onChange={(e) => changeNumPages(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>
+              Page gap
+            </Label>
+            <Input
+              placeholder="Page gap"
+              value={pageGap}
+              type="number"
+              min={0}
+              step={1}
+              onChange={(e) => changePageGap(e.target.value)}
             />
           </div>
           <Button type="submit" className="w-full">

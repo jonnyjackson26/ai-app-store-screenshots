@@ -13,9 +13,11 @@ export const JSON_KEYS = [
   "extensionType",
   "extension",
   "numPages",
+  "pageGap",
 ];
 
 export const DEFAULT_NUM_PAGES = 1;
+export const DEFAULT_PAGE_GAP = 0;
 
 export const filters = [
   "none",
@@ -220,7 +222,7 @@ export interface Editor {
   zoomOut: () => void;
   getWorkspace: () => fabric.Object | undefined;
   changeBackground: (value: string) => void;
-  changeSize: (value: { width: number; height: number; numPages: number }) => void;
+  changeSize: (value: { width: number; height: number; numPages: number; pageGap: number }) => void;
   enableDrawingMode: () => void;
   disableDrawingMode: () => void;
   onCopy: () => void;

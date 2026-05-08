@@ -23,8 +23,13 @@ export const useAutoResize = ({ canvas, container }: UseAutoResizeProps) => {
       .getObjects()
       .find((object) => object.name === "clip");
 
+    // Fit the visual bounds (logical width + gap padding) to the container
+    // so multi-page renders aren't cropped. Falls back to the workspace
+    // itself when no clipPath rect is present.
+    const fitTarget = (canvas.clipPath as fabric.Rect | undefined) ?? localWorkspace;
+
     // @ts-ignore
-    const scale = fabric.util.findScaleToFit(localWorkspace, {
+    const scale = fabric.util.findScaleToFit(fitTarget, {
       width: width,
       height: height,
     });
@@ -36,7 +41,7 @@ export const useAutoResize = ({ canvas, container }: UseAutoResizeProps) => {
 
     if (!localWorkspace) return;
 
-    const workspaceCenter = localWorkspace.getCenterPoint();
+    const workspaceCenter = fitTarget?.getCenterPoint() ?? localWorkspace.getCenterPoint();
     const viewportTransform = canvas.viewportTransform;
 
     if (
@@ -53,10 +58,17 @@ export const useAutoResize = ({ canvas, container }: UseAutoResizeProps) => {
 
     canvas.setViewportTransform(viewportTransform);
 
-    localWorkspace.clone((cloned: fabric.Rect) => {
-      canvas.clipPath = cloned;
-      canvas.requestRenderAll();
-    });
+    if (fitTarget) {
+      fitTarget.clone((cloned: fabric.Rect) => {
+        canvas.clipPath = cloned;
+        canvas.requestRenderAll();
+      });
+    } else {
+      localWorkspace.clone((cloned: fabric.Rect) => {
+        canvas.clipPath = cloned;
+        canvas.requestRenderAll();
+      });
+    }
   }, [canvas, container]);
 
   useEffect(() => {

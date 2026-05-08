@@ -15,7 +15,24 @@ export const JSON_KEYS = [
   "extension",
   "numPages",
   "pageGap",
+  "deviceFrame",
 ];
+
+export interface DeviceFrameMeta {
+  category: string;
+  device: string;
+  variation: string;
+  // The unframed screenshot URL — preserved so the frame can be swapped later
+  // without losing the original.
+  sourceUrl: string;
+  // "${category}::${device}::${variation}" at the time the framed PNG was
+  // baked. After loadJSON, if this disagrees with category/device/variation
+  // we re-bake against the upstream API.
+  cachedKey: string;
+}
+
+export const deviceFrameKey = (meta: Pick<DeviceFrameMeta, "category" | "device" | "variation">) =>
+  `${meta.category}::${meta.device}::${meta.variation}`;
 
 export const DEFAULT_NUM_PAGES = 1;
 export const DEFAULT_PAGE_GAP = 0;
@@ -246,6 +263,15 @@ export interface Editor {
   onPaste: () => void;
   changeImageFilter: (value: string) => void;
   addImage: (value: string) => void;
+  addFramedImage: (args: { url: string; deviceFrame: DeviceFrameMeta }) => void;
+  getSelectedImageSource: () => string | null;
+  getSelectedDeviceFrame: () => DeviceFrameMeta | null;
+  applyDeviceFrameToSelected: (args: {
+    url: string;
+    deviceFrame: DeviceFrameMeta;
+  }) => void;
+  removeDeviceFrameFromSelected: () => void;
+  reconcileDeviceFrames: () => Promise<void>;
   delete: () => void;
   changeFontSize: (value: number) => void;
   getActiveFontSize: () => number;

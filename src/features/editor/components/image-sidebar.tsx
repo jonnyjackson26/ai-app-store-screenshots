@@ -43,7 +43,7 @@ export const ImageSidebar = ({ editor, activeTool, onChangeActiveTool }: ImageSi
       </div>
       <ScrollArea className="flex-1">
         <div className="p-4">
-          <DeviceFramePicker />
+          <DeviceFramePicker editor={editor} />
         </div>
       </ScrollArea>
       <ToolSidebarClose onClick={onClose} />

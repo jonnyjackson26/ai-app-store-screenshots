@@ -23,6 +23,8 @@ import {
   DEFAULT_NUM_PAGES,
   DEFAULT_PAGE_GAP,
   type ColorValue,
+  type DeviceFrameMeta,
+  deviceFrameKey,
 } from "@/features/editor/types";
 import { useHistory } from "@/features/editor/hooks/use-history";
 import {
@@ -177,7 +179,88 @@ const buildEditor = ({
 
     canvas.loadFromJSON(data, () => {
       autoZoom();
+      // Re-bake any framed images whose deviceFrame metadata disagrees with
+      // the cached pixels. Fire-and-forget — image src updates as each one
+      // completes.
+      void reconcileFromCanvas();
     });
+  };
+
+  const reconcileFromCanvas = async () => {
+    const targets: {
+      image: fabric.Image;
+      meta: DeviceFrameMeta;
+    }[] = [];
+    canvas.getObjects().forEach((obj) => {
+      if (obj.type !== "image") return;
+      const meta = (obj as unknown as { deviceFrame?: DeviceFrameMeta }).deviceFrame;
+      if (!meta) return;
+      const currentKey = deviceFrameKey(meta);
+      if (meta.cachedKey === currentKey) return;
+      const sourceUrl =
+        meta.sourceUrl || ((obj as fabric.Image).getSrc?.() ?? "");
+      if (!sourceUrl) return;
+      targets.push({
+        image: obj as fabric.Image,
+        meta: { ...meta, sourceUrl },
+      });
+    });
+    if (targets.length === 0) return;
+    await Promise.all(
+      targets.map(async ({ image, meta }) => {
+        try {
+          const formData = new FormData();
+          formData.append("device", meta.device);
+          formData.append("variation", meta.variation);
+          formData.append("category", meta.category);
+          formData.append("sourceUrl", meta.sourceUrl);
+          const res = await fetch("/api/device-frames/apply", {
+            method: "POST",
+            body: formData,
+          });
+          if (!res.ok) return;
+          const json = (await res.json()) as { url: string; sourceUrl: string };
+          await new Promise<void>((resolve) => {
+            const center = image.getCenterPoint();
+            const origScaledWidth = image.getScaledWidth();
+            const origScaledHeight = image.getScaledHeight();
+            const angle = image.angle ?? 0;
+            image.setSrc(
+              json.url,
+              () => {
+                const naturalWidth = image.width ?? origScaledWidth;
+                const naturalHeight = image.height ?? origScaledHeight;
+                const scale = Math.min(
+                  origScaledWidth / naturalWidth,
+                  origScaledHeight / naturalHeight,
+                );
+                image.set({
+                  scaleX: scale,
+                  scaleY: scale,
+                  angle,
+                  originX: "center",
+                  originY: "center",
+                  left: center.x,
+                  top: center.y,
+                });
+                (image as unknown as { deviceFrame: DeviceFrameMeta }).deviceFrame = {
+                  ...meta,
+                  sourceUrl: json.sourceUrl,
+                  cachedKey: deviceFrameKey(meta),
+                };
+                image.setCoords();
+                resolve();
+              },
+              { crossOrigin: "anonymous" },
+            );
+          });
+        } catch {
+          // Leave the stale frame in place.
+        }
+      }),
+    );
+    canvas.requestRenderAll();
+    canvas.fire("canvas:dirty" as never);
   };
 
   const getWorkspace = () => {
@@ -324,6 +407,110 @@ const buildEditor = ({
           crossOrigin: "anonymous",
         },
       );
+    },
+    addFramedImage: ({ url, deviceFrame }) => {
+      fabric.Image.fromURL(
+        url,
+        (image) => {
+          const workspace = getWorkspace();
+          image.scaleToWidth(workspace?.width || 0);
+          image.scaleToHeight(workspace?.height || 0);
+          // Custom prop persisted via JSON_KEYS.
+          (image as unknown as { deviceFrame: DeviceFrameMeta }).deviceFrame = deviceFrame;
+          addToCanvas(image);
+        },
+        { crossOrigin: "anonymous" },
+      );
+    },
+    getSelectedImageSource: () => {
+      const active = canvas.getActiveObject();
+      if (!active || active.type !== "image") return null;
+      const src = (active as fabric.Image).getSrc?.();
+      return typeof src === "string" && src ? src : null;
+    },
+    getSelectedDeviceFrame: () => {
+      const active = canvas.getActiveObject();
+      if (!active || active.type !== "image") return null;
+      const meta = (active as unknown as { deviceFrame?: DeviceFrameMeta }).deviceFrame;
+      return meta ?? null;
+    },
+    applyDeviceFrameToSelected: ({ url, deviceFrame }) => {
+      const active = canvas.getActiveObject();
+      if (!active || active.type !== "image") return;
+      const target = active as fabric.Image;
+      const center = target.getCenterPoint();
+      const origScaledWidth = target.getScaledWidth();
+      const origScaledHeight = target.getScaledHeight();
+      const angle = target.angle ?? 0;
+
+      target.setSrc(
+        url,
+        () => {
+          const naturalWidth = target.width ?? origScaledWidth;
+          const naturalHeight = target.height ?? origScaledHeight;
+          // Fit the new framed pixels inside the original's bounding box.
+          const scale = Math.min(
+            origScaledWidth / naturalWidth,
+            origScaledHeight / naturalHeight,
+          );
+          target.set({
+            scaleX: scale,
+            scaleY: scale,
+            angle,
+            originX: "center",
+            originY: "center",
+            left: center.x,
+            top: center.y,
+          });
+          (target as unknown as { deviceFrame: DeviceFrameMeta }).deviceFrame = deviceFrame;
+          target.setCoords();
+          canvas.requestRenderAll();
+          canvas.fire("object:modified", { target });
+          notifyChange();
+        },
+        { crossOrigin: "anonymous" },
+      );
+    },
+    removeDeviceFrameFromSelected: () => {
+      const active = canvas.getActiveObject();
+      if (!active || active.type !== "image") return;
+      const target = active as fabric.Image;
+      const meta = (target as unknown as { deviceFrame?: DeviceFrameMeta }).deviceFrame;
+      if (!meta) return;
+      const center = target.getCenterPoint();
+      const origScaledWidth = target.getScaledWidth();
+      const origScaledHeight = target.getScaledHeight();
+      const angle = target.angle ?? 0;
+      target.setSrc(
+        meta.sourceUrl,
+        () => {
+          const naturalWidth = target.width ?? origScaledWidth;
+          const naturalHeight = target.height ?? origScaledHeight;
+          const scale = Math.min(
+            origScaledWidth / naturalWidth,
+            origScaledHeight / naturalHeight,
+          );
+          target.set({
+            scaleX: scale,
+            scaleY: scale,
+            angle,
+            originX: "center",
+            originY: "center",
+            left: center.x,
+            top: center.y,
+          });
+          // Wipe metadata.
+          (target as unknown as { deviceFrame?: DeviceFrameMeta }).deviceFrame = undefined;
+          target.setCoords();
+          canvas.requestRenderAll();
+          canvas.fire("object:modified", { target });
+          notifyChange();
+        },
+        { crossOrigin: "anonymous" },
+      );
+    },
+    reconcileDeviceFrames: async () => {
+      await reconcileFromCanvas();
     },
     delete: () => {
       canvas.getActiveObjects().forEach((object) => canvas.remove(object));

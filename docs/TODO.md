@@ -19,3 +19,5 @@ Ai can generate images and then upload them to upload thing and edit images.
 
 on device-frames: 
 The upstream API has 143 frames and /find_template is one call per variation, so the very first cold request to /api/device-frames will be slow (a few seconds). After that it's cached for a day. If first-load latency feels bad in practice, we can swap to lazy per-category fetches when you wire up the click-to-add behavior  - so idk if itd be better to have list_frames endpoint return frame urls to the image hosted on github.idk. should we extend caching length?
+
+i should be ablt to click on elements so theyre referenced in the chat for ai (like how u can @ files in cursor)

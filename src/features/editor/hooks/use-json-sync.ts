@@ -124,6 +124,9 @@ export const useJsonSync = (
       applyingFromJson.current = false;
       currentEditor.save();
       setStatus({ ok: true });
+      // If the user edited deviceFrame fields in the JSON, re-bake any
+      // image whose pixels are stale relative to its metadata.
+      void currentEditor.reconcileDeviceFrames();
     });
   }, []);
 

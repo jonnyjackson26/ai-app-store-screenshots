@@ -1,15 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import {
-  Check,
-  Loader2,
-  Send,
-  Sparkles,
-  Trash2,
-  Undo2,
-  X,
-} from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Loader2, Send, Sparkles, Trash2, Undo2 } from "lucide-react";
 
 import { ActiveTool, Editor } from "@/features/editor/types";
 import { ToolSidebarClose } from "@/features/editor/components/tool-sidebar-close";
@@ -40,15 +32,18 @@ export const AiSidebar = ({
     busy,
     error,
     send,
-    toggleOp,
-    acceptCurrent,
-    rejectCurrent,
     revertTurn,
     clearChat,
   } = useAiChat(editor, aiApplying);
 
   const [input, setInput] = useState("");
   const transcriptRef = useRef<HTMLDivElement>(null);
+
+  const baselineByTurnId = useMemo(() => {
+    const map = new Map<string, object>();
+    for (const t of turns) map.set(t.id, t.baselineJson);
+    return map;
+  }, [turns]);
 
   useEffect(() => {
     const el = transcriptRef.current;
@@ -59,7 +54,7 @@ export const AiSidebar = ({
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || busy || current) return;
+    if (!input.trim() || busy) return;
     const value = input;
     setInput("");
     await send(value);
@@ -94,7 +89,7 @@ export const AiSidebar = ({
     >
       <ToolSidebarHeader
         title="AI assistant"
-        description="Describe a change and review proposed edits"
+        description="Describe a change and the AI will apply it"
       />
 
       <div ref={transcriptRef} className="flex-1 min-h-0 overflow-y-auto p-3 space-y-3">
@@ -113,88 +108,65 @@ export const AiSidebar = ({
           </div>
         )}
 
-        {messages.map((m, i) => (
-          <div
-            key={i}
-            className={cn(
-              "rounded-md p-2 text-sm",
-              m.role === "user"
-                ? "bg-blue-50 border border-blue-100"
-                : "bg-muted/40 border",
-            )}
-          >
-            <div className="flex items-start justify-between gap-x-2 mb-1">
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                {m.role}
-              </p>
-              {m.turnId && (
-                <button
-                  type="button"
-                  onClick={() => onRevert(m.turnId!)}
-                  className="text-[10px] text-muted-foreground hover:text-destructive transition-colors flex items-center gap-x-1"
-                  title="Revert to before this change"
-                >
-                  <Undo2 className="size-3" />
-                  Revert
-                </button>
+        {messages.map((m, i) => {
+          const baseline =
+            m.turnId ? baselineByTurnId.get(m.turnId) ?? null : null;
+          return (
+            <div
+              key={i}
+              className={cn(
+                "rounded-md p-2 text-sm",
+                m.role === "user"
+                  ? "bg-blue-50 border border-blue-100"
+                  : "bg-muted/40 border",
+              )}
+            >
+              <div className="flex items-start justify-between gap-x-2 mb-1">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                  {m.role}
+                </p>
+                {m.turnId && (
+                  <button
+                    type="button"
+                    onClick={() => onRevert(m.turnId!)}
+                    className="text-[10px] text-muted-foreground hover:text-destructive transition-colors flex items-center gap-x-1"
+                    title="Revert to before this change"
+                  >
+                    <Undo2 className="size-3" />
+                    Revert
+                  </button>
+                )}
+              </div>
+              {m.content && <p className="whitespace-pre-wrap">{m.content}</p>}
+              {m.role === "assistant" && m.appliedOps && m.appliedOps.length > 0 && (
+                <div className="space-y-1.5 pt-2">
+                  {m.appliedOps.map((op) => (
+                    <OpRow key={op.id} op={op} baselineJson={baseline} />
+                  ))}
+                </div>
               )}
             </div>
-            <p className="whitespace-pre-wrap">{m.content}</p>
-          </div>
-        ))}
+          );
+        })}
 
         {current && (
           <div className="rounded-md p-2 text-sm bg-muted/40 border space-y-2">
             <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-              assistant {current.status === "streaming" && "(thinking…)"}
+              assistant (thinking…)
             </p>
             {current.responseText ? (
               <p className="whitespace-pre-wrap">{current.responseText}</p>
-            ) : current.status === "streaming" ? (
+            ) : (
               <p className="text-muted-foreground italic">…</p>
-            ) : null}
+            )}
             {current.ops.length > 0 && (
-              <div className="space-y-1.5 pt-1">
+              <ul className="space-y-1 pt-1 text-xs text-muted-foreground">
                 {current.ops.map((op) => (
-                  <OpRow
-                    key={op.id}
-                    op={op}
-                    checked={current.checkedIds.has(op.id)}
-                    onToggle={() => toggleOp(op.id)}
-                    disabled={current.status !== "previewing"}
-                    baselineJson={current.baselineJson}
-                  />
+                  <li key={op.id} className="leading-tight">
+                    • {op.summary}
+                  </li>
                 ))}
-              </div>
-            )}
-            {current.status === "previewing" && current.ops.length > 0 && (
-              <div className="flex items-center gap-x-2 pt-1">
-                <Button
-                  size="sm"
-                  onClick={() => void acceptCurrent()}
-                  className="flex-1"
-                >
-                  <Check className="size-3.5 mr-1" />
-                  Accept {current.checkedIds.size}/{current.ops.length}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => void rejectCurrent()}
-                >
-                  <X className="size-3.5 mr-1" />
-                  Reject
-                </Button>
-              </div>
-            )}
-            {current.status === "previewing" && current.ops.length === 0 && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => void rejectCurrent()}
-              >
-                Dismiss
-              </Button>
+              </ul>
             )}
           </div>
         )}
@@ -211,17 +183,15 @@ export const AiSidebar = ({
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={onKey}
-          placeholder={
-            current ? "Accept or reject the proposal first…" : "Describe a change…"
-          }
-          disabled={busy || current !== null}
+          placeholder="Describe a change…"
+          disabled={busy}
           className="min-h-[60px] text-sm"
         />
         <div className="flex items-center gap-x-2">
           <Button
             type="submit"
             size="sm"
-            disabled={busy || !input.trim() || current !== null}
+            disabled={busy || !input.trim()}
             className="flex-1"
           >
             {busy ? (
@@ -242,7 +212,7 @@ export const AiSidebar = ({
               size="sm"
               variant="ghost"
               onClick={clearChat}
-              disabled={busy || current !== null}
+              disabled={busy}
               title="Clear chat history (does not undo applied edits)"
             >
               <Trash2 className="size-3.5" />

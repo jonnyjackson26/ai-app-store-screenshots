@@ -14,9 +14,6 @@ const DiffEditor = dynamic(
 
 interface OpRowProps {
   op: AiOp;
-  checked: boolean;
-  onToggle: () => void;
-  disabled?: boolean;
   baselineJson: object | null;
 }
 
@@ -117,11 +114,10 @@ const buildDiff = (
   };
 };
 
-export const OpRow = ({ op, checked, onToggle, disabled, baselineJson }: OpRowProps) => {
+export const OpRow = ({ op, baselineJson }: OpRowProps) => {
   const [expanded, setExpanded] = useState(false);
 
   const diff = useMemo(() => buildDiff(op, baselineJson), [op, baselineJson]);
-  // Approximate height: number of lines in the larger side, clamped.
   const lines = Math.max(
     diff.before.split("\n").length,
     diff.after.split("\n").length,
@@ -130,34 +126,25 @@ export const OpRow = ({ op, checked, onToggle, disabled, baselineJson }: OpRowPr
 
   return (
     <div className="border rounded-md text-xs bg-white">
-      <div className="flex items-start gap-x-2 p-2">
-        <input
-          type="checkbox"
-          checked={checked}
-          onChange={onToggle}
-          disabled={disabled}
-          className="mt-0.5 cursor-pointer"
-        />
-        <button
-          type="button"
-          onClick={() => setExpanded((e) => !e)}
-          className="flex-1 text-left flex items-start gap-x-1.5"
-        >
-          {expanded ? (
-            <ChevronDown className="size-3.5 mt-0.5 shrink-0 text-muted-foreground" />
-          ) : (
-            <ChevronRight className="size-3.5 mt-0.5 shrink-0 text-muted-foreground" />
-          )}
-          <div className="flex-1 min-w-0">
-            <p className="font-medium leading-tight">{op.summary}</p>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wide mt-0.5">
-              {opKindLabel(op)}
-              {(op.kind === "modify_object" || op.kind === "remove_object") &&
-                ` · ${op.targetId}`}
-            </p>
-          </div>
-        </button>
-      </div>
+      <button
+        type="button"
+        onClick={() => setExpanded((e) => !e)}
+        className="w-full text-left flex items-start gap-x-1.5 p-2"
+      >
+        {expanded ? (
+          <ChevronDown className="size-3.5 mt-0.5 shrink-0 text-muted-foreground" />
+        ) : (
+          <ChevronRight className="size-3.5 mt-0.5 shrink-0 text-muted-foreground" />
+        )}
+        <div className="flex-1 min-w-0">
+          <p className="font-medium leading-tight">{op.summary}</p>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wide mt-0.5">
+            {opKindLabel(op)}
+            {(op.kind === "modify_object" || op.kind === "remove_object") &&
+              ` · ${op.targetId}`}
+          </p>
+        </div>
+      </button>
       {expanded && (
         <div className="border-t" style={{ height: diffHeight }}>
           <DiffEditor

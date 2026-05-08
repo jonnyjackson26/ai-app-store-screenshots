@@ -2,7 +2,8 @@ import { fabric } from "fabric";
 
 import { JSON_KEYS } from "@/features/editor/types";
 import type { Editor } from "@/features/editor/types";
-import type { AiOp, GradientFill } from "./types";
+import { isGradientFill, materializeFill } from "@/features/editor/color-utils";
+import type { AiOp } from "./types";
 
 type ObjWithCustom = fabric.Object & { id?: string; name?: string };
 
@@ -11,23 +12,6 @@ const findById = (canvas: fabric.Canvas, id: string): fabric.Object | undefined 
     .getObjects()
     .find((o) => (o as ObjWithCustom).id === id) as fabric.Object | undefined;
 
-const isGradientFill = (value: unknown): value is GradientFill =>
-  !!value &&
-  typeof value === "object" &&
-  "type" in (value as Record<string, unknown>) &&
-  "colorStops" in (value as Record<string, unknown>);
-
-// Convert a structured GradientFill into a fabric.Gradient instance. Plain
-// color strings pass through unchanged.
-const materializeFill = (value: unknown): unknown => {
-  if (!isGradientFill(value)) return value;
-  return new fabric.Gradient({
-    type: value.type,
-    coords: value.coords,
-    colorStops: value.colorStops,
-  });
-};
-
 // Walk the props record and replace any gradient-shaped value with a real
 // fabric.Gradient. Right now this only matters for `fill`, but kept generic
 // in case we expose stroke gradients later.
@@ -35,7 +19,11 @@ const materializeProps = (
   props: Record<string, unknown>,
 ): Record<string, unknown> => {
   if (!("fill" in props)) return props;
-  return { ...props, fill: materializeFill(props.fill) };
+  const fill = props.fill;
+  return {
+    ...props,
+    fill: isGradientFill(fill) ? materializeFill(fill) : fill,
+  };
 };
 
 const buildAddObject = async (

@@ -64,18 +64,7 @@ export interface SetZOrderOp {
   summary: string;
 }
 
-export interface GradientFill {
-  type: "linear" | "radial";
-  coords: {
-    x1: number;
-    y1: number;
-    x2: number;
-    y2: number;
-    r1?: number;
-    r2?: number;
-  };
-  colorStops: { offset: number; color: string }[];
-}
+export type { GradientFill } from "@/features/editor/types";
 
 export type AiOp =
   | ModifyObjectOp

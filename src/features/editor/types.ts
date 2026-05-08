@@ -123,6 +123,21 @@ export const FONT_FAMILY = "Arial";
 export const FONT_SIZE = 32;
 export const FONT_WEIGHT = 400;
 
+export interface GradientFill {
+  type: "linear" | "radial";
+  coords: {
+    x1: number;
+    y1: number;
+    x2: number;
+    y2: number;
+    r1?: number;
+    r2?: number;
+  };
+  colorStops: { offset: number; color: string }[];
+}
+
+export type ColorValue = string | GradientFill;
+
 export const CIRCLE_OPTIONS = {
   radius: 225,
   left: 100,
@@ -192,15 +207,15 @@ export type BuildEditorProps = {
   copy: () => void;
   paste: () => void;
   canvas: fabric.Canvas;
-  fillColor: string;
-  strokeColor: string;
+  fillColor: ColorValue;
+  strokeColor: ColorValue;
   strokeWidth: number;
   selectedObjects: fabric.Object[];
   strokeDashArray: number[];
   fontFamily: string;
   setStrokeDashArray: (value: number[]) => void;
-  setFillColor: (value: string) => void;
-  setStrokeColor: (value: string) => void;
+  setFillColor: (value: ColorValue) => void;
+  setStrokeColor: (value: ColorValue) => void;
   setStrokeWidth: (value: number) => void;
   setFontFamily: (value: string) => void;
   projectTitle: string;
@@ -223,7 +238,7 @@ export interface Editor {
   zoomIn: () => void;
   zoomOut: () => void;
   getWorkspace: () => fabric.Object | undefined;
-  changeBackground: (value: string) => void;
+  changeBackground: (value: ColorValue) => void;
   changeSize: (value: { width: number; height: number; numPages: number; pageGap: number }) => void;
   enableDrawingMode: () => void;
   disableDrawingMode: () => void;
@@ -252,8 +267,8 @@ export interface Editor {
   bringForward: () => void;
   sendBackwards: () => void;
   changeStrokeWidth: (value: number) => void;
-  changeFillColor: (value: string) => void;
-  changeStrokeColor: (value: string) => void;
+  changeFillColor: (value: ColorValue) => void;
+  changeStrokeColor: (value: ColorValue) => void;
   changeStrokeDashArray: (value: number[]) => void;
   addCircle: () => void;
   addSoftRectangle: () => void;
@@ -262,8 +277,8 @@ export interface Editor {
   addInverseTriangle: () => void;
   addDiamond: () => void;
   canvas: fabric.Canvas;
-  getActiveFillColor: () => string;
-  getActiveStrokeColor: () => string;
+  getActiveFillColor: () => ColorValue;
+  getActiveStrokeColor: () => ColorValue;
   getActiveStrokeWidth: () => number;
   getActiveStrokeDashArray: () => number[];
   selectedObjects: fabric.Object[];

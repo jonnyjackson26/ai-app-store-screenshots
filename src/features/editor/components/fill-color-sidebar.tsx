@@ -1,4 +1,9 @@
-import { ActiveTool, Editor, FILL_COLOR } from "@/features/editor/types";
+import {
+  ActiveTool,
+  type ColorValue,
+  Editor,
+  FILL_COLOR,
+} from "@/features/editor/types";
 import { ToolSidebarClose } from "@/features/editor/components/tool-sidebar-close";
 import { ToolSidebarHeader } from "@/features/editor/components/tool-sidebar-header";
 import { ColorPicker } from "@/features/editor/components/color-picker";
@@ -17,13 +22,20 @@ export const FillColorSidebar = ({
   activeTool,
   onChangeActiveTool,
 }: FillColorSidebarProps) => {
-  const value = editor?.getActiveFillColor() || FILL_COLOR;
+  const value: ColorValue = editor?.getActiveFillColor() ?? FILL_COLOR;
+  const selected = editor?.selectedObjects[0];
+  const targetSize = selected
+    ? {
+        width: selected.getScaledWidth?.() || selected.width || 400,
+        height: selected.getScaledHeight?.() || selected.height || 400,
+      }
+    : undefined;
 
   const onClose = () => {
     onChangeActiveTool("select");
   };
 
-  const onChange = (value: string) => {
+  const onChange = (value: ColorValue) => {
     editor?.changeFillColor(value);
   };
 
@@ -43,6 +55,7 @@ export const FillColorSidebar = ({
           <ColorPicker
             value={value}
             onChange={onChange}
+            targetSize={targetSize}
           />
         </div>
       </ScrollArea>

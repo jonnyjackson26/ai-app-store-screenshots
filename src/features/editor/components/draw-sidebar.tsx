@@ -1,9 +1,11 @@
-import { 
-  ActiveTool, 
-  Editor, 
-  STROKE_COLOR, 
-  STROKE_WIDTH
+import {
+  ActiveTool,
+  type ColorValue,
+  Editor,
+  STROKE_COLOR,
+  STROKE_WIDTH,
 } from "@/features/editor/types";
+import { firstStopColor } from "@/features/editor/color-utils";
 import { ToolSidebarClose } from "@/features/editor/components/tool-sidebar-close";
 import { ToolSidebarHeader } from "@/features/editor/components/tool-sidebar-header";
 import { ColorPicker } from "@/features/editor/components/color-picker";
@@ -24,7 +26,9 @@ export const DrawSidebar = ({
   activeTool,
   onChangeActiveTool,
 }: DrawSidebarProps) => {
-  const colorValue = editor?.getActiveStrokeColor() || STROKE_COLOR;
+  const colorValue: string = firstStopColor(
+    editor?.getActiveStrokeColor() ?? STROKE_COLOR,
+  );
   const widthValue = editor?.getActiveStrokeWidth() || STROKE_WIDTH;
 
   const onClose = () => {
@@ -32,7 +36,7 @@ export const DrawSidebar = ({
     onChangeActiveTool("select");
   };
 
-  const onColorChange = (value: string) => {
+  const onColorChange = (value: ColorValue) => {
     editor?.changeStrokeColor(value);
   };
 
@@ -65,6 +69,7 @@ export const DrawSidebar = ({
           <ColorPicker
             value={colorValue}
             onChange={onColorChange}
+            allowGradient={false}
           />
         </div>
       </ScrollArea>

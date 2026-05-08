@@ -1,9 +1,11 @@
 import { ActiveTool, Editor } from "@/features/editor/types";
 import { ToolSidebarClose } from "@/features/editor/components/tool-sidebar-close";
 import { ToolSidebarHeader } from "@/features/editor/components/tool-sidebar-header";
+import { DeviceFramePicker } from "@/features/editor/components/device-frame-picker";
 
 import { cn } from "@/lib/utils";
 import { UploadButton } from "@/lib/uploadthing";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ImageSidebarProps {
   editor: Editor | undefined;
@@ -39,6 +41,11 @@ export const ImageSidebar = ({ editor, activeTool, onChangeActiveTool }: ImageSi
           }}
         />
       </div>
+      <ScrollArea className="flex-1">
+        <div className="p-4">
+          <DeviceFramePicker />
+        </div>
+      </ScrollArea>
       <ToolSidebarClose onClick={onClose} />
     </aside>
   );

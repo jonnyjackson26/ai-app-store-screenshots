@@ -2,10 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 
 import {
   ActiveTool,
+  type ColorValue,
   DEFAULT_NUM_PAGES,
   DEFAULT_PAGE_GAP,
   Editor,
+  FILL_COLOR,
 } from "@/features/editor/types";
+import { dematerializeFill } from "@/features/editor/color-utils";
 import { ToolSidebarClose } from "@/features/editor/components/tool-sidebar-close";
 import { ToolSidebarHeader } from "@/features/editor/components/tool-sidebar-header";
 import { ColorPicker } from "@/features/editor/components/color-picker";
@@ -45,13 +48,16 @@ export const SettingsSidebar = ({
     return `${parsed}`;
   }, [workspace]);
   const initialHeight = useMemo(() => `${workspace?.height ?? 0}`, [workspace]);
-  const initialBackground = useMemo(() => workspace?.fill ?? "#ffffff", [workspace]);
+  const initialBackground = useMemo<ColorValue>(
+    () => (workspace?.fill ? dematerializeFill(workspace.fill) : FILL_COLOR),
+    [workspace],
+  );
 
   const [pageWidth, setPageWidth] = useState(initialPageWidth);
   const [numPages, setNumPages] = useState(initialNumPages);
   const [pageGap, setPageGap] = useState(initialPageGap);
   const [height, setHeight] = useState(initialHeight);
-  const [background, setBackground] = useState(initialBackground);
+  const [background, setBackground] = useState<ColorValue>(initialBackground);
 
   useEffect(() => {
     setPageWidth(initialPageWidth);
@@ -72,10 +78,20 @@ export const SettingsSidebar = ({
   const changeNumPages = (value: string) => setNumPages(value);
   const changePageGap = (value: string) => setPageGap(value);
   const changeHeight = (value: string) => setHeight(value);
-  const changeBackground = (value: string) => {
+  const changeBackground = (value: ColorValue) => {
     setBackground(value);
     editor?.changeBackground(value);
   };
+
+  const workspaceTargetSize = (() => {
+    const totalWidth = workspace?.width ?? 0;
+    const pages = parseInt(numPages, 10) || DEFAULT_NUM_PAGES;
+    const perPageWidth = pages > 0 ? Math.round(totalWidth / pages) : totalWidth;
+    return {
+      width: perPageWidth || 400,
+      height: workspace?.height || 400,
+    };
+  })();
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -159,8 +175,9 @@ export const SettingsSidebar = ({
         </form>
         <div className="p-4">
           <ColorPicker
-            value={background as string} // We dont support gradients or patterns
+            value={background}
             onChange={changeBackground}
+            targetSize={workspaceTargetSize}
           />
         </div>
       </ScrollArea>

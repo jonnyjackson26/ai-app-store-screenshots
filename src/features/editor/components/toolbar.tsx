@@ -21,12 +21,14 @@ import {
 } from "lucide-react";
 
 import { isTextType } from "@/features/editor/utils";
+import { colorValueToCss, firstStopColor } from "@/features/editor/color-utils";
 import { FontSizeInput } from "@/features/editor/components/font-size-input";
-import { 
-  ActiveTool, 
-  Editor, 
-  FONT_SIZE, 
-  FONT_WEIGHT
+import {
+  ActiveTool,
+  type ColorValue,
+  Editor,
+  FONT_SIZE,
+  FONT_WEIGHT,
 } from "@/features/editor/types";
 
 import { cn } from "@/lib/utils";
@@ -174,7 +176,11 @@ export const Toolbar = ({
             >
               <div
                 className="rounded-sm size-4 border"
-                style={{ backgroundColor: properties.fillColor }}
+                style={{
+                  background: properties.fillColor
+                    ? colorValueToCss(properties.fillColor as ColorValue)
+                    : undefined,
+                }}
               />
             </Button>
           </Hint>
@@ -193,7 +199,11 @@ export const Toolbar = ({
             >
               <div
                 className="rounded-sm size-4 border-2 bg-white"
-                style={{ borderColor: properties.strokeColor }}
+                style={{
+                  borderColor: properties.strokeColor
+                    ? firstStopColor(properties.strokeColor as ColorValue)
+                    : undefined,
+                }}
               />
             </Button>
           </Hint>

@@ -3,15 +3,15 @@ import JSZip from "jszip";
 import { useCallback, useState, useMemo, useRef } from "react";
 import { uuid } from "uuidv4";
 
-import { 
-  Editor, 
+import {
+  Editor,
   FILL_COLOR,
   STROKE_WIDTH,
   STROKE_COLOR,
   CIRCLE_OPTIONS,
   DIAMOND_OPTIONS,
   TRIANGLE_OPTIONS,
-  BuildEditorProps, 
+  BuildEditorProps,
   RECTANGLE_OPTIONS,
   EditorHookProps,
   STROKE_DASH_ARRAY,
@@ -22,14 +22,20 @@ import {
   JSON_KEYS,
   DEFAULT_NUM_PAGES,
   DEFAULT_PAGE_GAP,
+  type ColorValue,
 } from "@/features/editor/types";
 import { useHistory } from "@/features/editor/hooks/use-history";
-import { 
-  createFilter, 
-  downloadFile, 
+import {
+  createFilter,
+  downloadFile,
   isTextType,
   transformText
 } from "@/features/editor/utils";
+import {
+  dematerializeFill,
+  firstStopColor,
+  materializeFill,
+} from "@/features/editor/color-utils";
 import { useHotkeys } from "@/features/editor/hooks/use-hotkeys";
 import { useClipboard } from "@/features/editor/hooks//use-clipboard";
 import { useAutoResize } from "@/features/editor/hooks/use-auto-resize";
@@ -267,9 +273,9 @@ const buildEditor = ({
       save();
       notifyChange();
     },
-    changeBackground: (value: string) => {
+    changeBackground: (value: ColorValue) => {
       const workspace = getWorkspace();
-      workspace?.set({ fill: value });
+      workspace?.set({ fill: materializeFill(value) });
       canvas.renderAll();
       save();
       notifyChange();
@@ -279,7 +285,7 @@ const buildEditor = ({
       canvas.renderAll();
       canvas.isDrawingMode = true;
       canvas.freeDrawingBrush.width = strokeWidth;
-      canvas.freeDrawingBrush.color = strokeColor;
+      canvas.freeDrawingBrush.color = firstStopColor(strokeColor);
     },
     disableDrawingMode: () => {
       canvas.isDrawingMode = false;
@@ -327,7 +333,7 @@ const buildEditor = ({
     addText: (value, options) => {
       const object = new fabric.Textbox(value, {
         ...TEXT_OPTIONS,
-        fill: fillColor,
+        fill: materializeFill(fillColor),
         ...options,
       });
 
@@ -515,26 +521,28 @@ const buildEditor = ({
       canvas.renderAll();
       notifyChange();
     },
-    changeFillColor: (value: string) => {
+    changeFillColor: (value: ColorValue) => {
       setFillColor(value);
+      const fillForFabric = materializeFill(value);
       canvas.getActiveObjects().forEach((object) => {
-        object.set({ fill: value });
+        object.set({ fill: fillForFabric });
       });
       canvas.renderAll();
       notifyChange();
     },
-    changeStrokeColor: (value: string) => {
+    changeStrokeColor: (value: ColorValue) => {
       setStrokeColor(value);
+      const colorForFabric = materializeFill(value);
       canvas.getActiveObjects().forEach((object) => {
         // Text types don't have stroke
         if (isTextType(object.type)) {
-          object.set({ fill: value });
+          object.set({ fill: colorForFabric });
           return;
         }
 
-        object.set({ stroke: value });
+        object.set({ stroke: colorForFabric });
       });
-      canvas.freeDrawingBrush.color = value;
+      canvas.freeDrawingBrush.color = firstStopColor(value);
       canvas.renderAll();
       notifyChange();
     },
@@ -558,8 +566,8 @@ const buildEditor = ({
     addCircle: () => {
       const object = new fabric.Circle({
         ...CIRCLE_OPTIONS,
-        fill: fillColor,
-        stroke: strokeColor,
+        fill: materializeFill(fillColor),
+        stroke: materializeFill(strokeColor),
         strokeWidth: strokeWidth,
         strokeDashArray: strokeDashArray,
       });
@@ -571,8 +579,8 @@ const buildEditor = ({
         ...RECTANGLE_OPTIONS,
         rx: 50,
         ry: 50,
-        fill: fillColor,
-        stroke: strokeColor,
+        fill: materializeFill(fillColor),
+        stroke: materializeFill(strokeColor),
         strokeWidth: strokeWidth,
         strokeDashArray: strokeDashArray,
       });
@@ -582,8 +590,8 @@ const buildEditor = ({
     addRectangle: () => {
       const object = new fabric.Rect({
         ...RECTANGLE_OPTIONS,
-        fill: fillColor,
-        stroke: strokeColor,
+        fill: materializeFill(fillColor),
+        stroke: materializeFill(strokeColor),
         strokeWidth: strokeWidth,
         strokeDashArray: strokeDashArray,
       });
@@ -593,8 +601,8 @@ const buildEditor = ({
     addTriangle: () => {
       const object = new fabric.Triangle({
         ...TRIANGLE_OPTIONS,
-        fill: fillColor,
-        stroke: strokeColor,
+        fill: materializeFill(fillColor),
+        stroke: materializeFill(strokeColor),
         strokeWidth: strokeWidth,
         strokeDashArray: strokeDashArray,
       });
@@ -613,8 +621,8 @@ const buildEditor = ({
         ],
         {
           ...TRIANGLE_OPTIONS,
-          fill: fillColor,
-          stroke: strokeColor,
+          fill: materializeFill(fillColor),
+          stroke: materializeFill(strokeColor),
           strokeWidth: strokeWidth,
           strokeDashArray: strokeDashArray,
         }
@@ -635,8 +643,8 @@ const buildEditor = ({
         ],
         {
           ...DIAMOND_OPTIONS,
-          fill: fillColor,
-          stroke: strokeColor,
+          fill: materializeFill(fillColor),
+          stroke: materializeFill(strokeColor),
           strokeWidth: strokeWidth,
           strokeDashArray: strokeDashArray,
         }
@@ -677,10 +685,9 @@ const buildEditor = ({
         return fillColor;
       }
 
-      const value = selectedObject.get("fill") || fillColor;
-
-      // Currently, gradients & patterns are not supported
-      return value as string;
+      const raw = selectedObject.get("fill");
+      if (raw === undefined || raw === null || raw === "") return fillColor;
+      return dematerializeFill(raw);
     },
     getActiveStrokeColor: () => {
       const selectedObject = selectedObjects[0];
@@ -689,9 +696,9 @@ const buildEditor = ({
         return strokeColor;
       }
 
-      const value = selectedObject.get("stroke") || strokeColor;
-
-      return value;
+      const raw = selectedObject.get("stroke");
+      if (raw === undefined || raw === null || raw === "") return strokeColor;
+      return dematerializeFill(raw);
     },
     getActiveStrokeWidth: () => {
       const selectedObject = selectedObjects[0];
@@ -734,8 +741,8 @@ export const useEditor = ({
   const [selectedObjects, setSelectedObjects] = useState<fabric.Object[]>([]);
 
   const [fontFamily, setFontFamily] = useState(FONT_FAMILY);
-  const [fillColor, setFillColor] = useState(FILL_COLOR);
-  const [strokeColor, setStrokeColor] = useState(STROKE_COLOR);
+  const [fillColor, setFillColor] = useState<ColorValue>(FILL_COLOR);
+  const [strokeColor, setStrokeColor] = useState<ColorValue>(STROKE_COLOR);
   const [strokeWidth, setStrokeWidth] = useState(STROKE_WIDTH);
   const [strokeDashArray, setStrokeDashArray] = useState<number[]>(STROKE_DASH_ARRAY);
   const [projectTitle, setProjectTitle] = useState("Untitled design");

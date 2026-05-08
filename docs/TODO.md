@@ -16,3 +16,6 @@ add to agents.md that when a new feature is added, consider if i need to update 
 # EVENTUALLY:
 To make there be gaps between the rendered canvas, i did some logic but the tradeoff is that the page render is repeated numPages times per frame. I'm sure there's a better way to do this.
 Ai can generate images and then upload them to upload thing and edit images.
+
+on device-frames: 
+The upstream API has 143 frames and /find_template is one call per variation, so the very first cold request to /api/device-frames will be slow (a few seconds). After that it's cached for a day. If first-load latency feels bad in practice, we can swap to lazy per-category fetches when you wire up the click-to-add behavior  - so idk if itd be better to have list_frames endpoint return frame urls to the image hosted on github.idk. should we extend caching length?

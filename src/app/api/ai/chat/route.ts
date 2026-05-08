@@ -23,6 +23,12 @@ export const runtime = "nodejs";
 const MAX_HISTORY = 12;
 const MAX_READ_OBJECT_PER_TURN = 3;
 const MAX_RETRIES = 2;
+// Runaway fuse for the tool-call loop. Normal exit is finish_reason: "stop"
+// with no tool calls; this cap only matters if the model never stops.
+const MAX_TOOL_ITERATIONS = 15;
+// Hard ceiling on write ops per user turn. Stops a misbehaving model from
+// emitting hundreds of ops on a 200-object scene.
+const MAX_OPS_PER_TURN = 30;
 // gpt-5-mini is a reasoning model — output tokens are split between hidden
 // reasoning and visible content. With reasoning_effort: "minimal" the
 // reasoning budget collapses to ~0 and tokens behave like a normal model,
@@ -215,10 +221,13 @@ export async function POST(req: NextRequest) {
         let conversation = baseMessages;
         let readObjectCalls = 0;
         let retryCount = 0;
+        let opsEmittedThisTurn = 0;
 
-        // Outer loop: handles read_object self-loops + retries on validation failures.
-        // Each iteration is one OpenAI call; each call may emit text + ops + tool calls.
-        for (let iter = 0; iter < 6; iter++) {
+        // Outer loop: each iteration is one OpenAI call. We continue as long
+        // as the model keeps emitting tool calls; we stop when it returns
+        // finish_reason "stop" with no tool calls, hits the runaway fuse, or
+        // exceeds the per-turn op cap.
+        for (let iter = 0; iter < MAX_TOOL_ITERATIONS; iter++) {
           const response = await openai.chat.completions.create({
             model: MODEL,
             messages: conversation,
@@ -234,7 +243,6 @@ export async function POST(req: NextRequest) {
             number,
             { id: string; name: string; argsJson: string }
           >();
-          let finishReason: string | null = null;
 
           for await (const chunk of response) {
             const choice = chunk.choices[0];
@@ -263,19 +271,13 @@ export async function POST(req: NextRequest) {
                 toolCallBuffer.set(idx, slot);
               }
             }
-
-            if (choice.finish_reason) {
-              finishReason = choice.finish_reason;
-            }
           }
 
-          if (finishReason === "stop" || toolCallBuffer.size === 0) {
-            // Pure text turn (or unexpected stop with no tool calls). We're done.
-            break;
-          }
+          // Model emitted no tool calls — it's done (text reply or empty stop).
+          if (toolCallBuffer.size === 0) break;
 
           // Reconstruct the assistant message with all tool calls so we can
-          // append tool results in the next iteration if needed.
+          // append tool results to feed back into the next iteration.
           const assistantMessage: OpenAI.Chat.ChatCompletionMessageParam = {
             role: "assistant",
             content: assistantContent || null,
@@ -288,7 +290,6 @@ export async function POST(req: NextRequest) {
               })),
           };
 
-          let needsAnotherIteration = false;
           const followupToolMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [];
 
           for (const [, slot] of Array.from(toolCallBuffer.entries()).sort(
@@ -306,7 +307,6 @@ export async function POST(req: NextRequest) {
                   error: `Invalid JSON in tool args: ${(e as Error).message}`,
                 }),
               });
-              needsAnotherIteration = true;
               continue;
             }
 
@@ -328,12 +328,26 @@ export async function POST(req: NextRequest) {
                   content: resolveReadObject(parsedArgs, body.scene),
                 });
               }
-              needsAnotherIteration = true;
+              continue;
+            }
+
+            // Per-turn op cap: refuse new write ops once exceeded so the
+            // model can wrap up gracefully instead of being cut mid-stream.
+            if (opsEmittedThisTurn >= MAX_OPS_PER_TURN) {
+              followupToolMessages.push({
+                role: "tool",
+                tool_call_id: slot.id,
+                content: JSON.stringify({
+                  ok: false,
+                  error: `Op limit (${MAX_OPS_PER_TURN}) reached for this turn. Stop emitting more changes and summarize what you've done.`,
+                }),
+              });
               continue;
             }
 
             const result = buildOpFromToolCall(slot.name, parsedArgs, body.scene);
             if (result.ok) {
+              opsEmittedThisTurn++;
               sendEvent(controller, encoder, { type: "op", op: result.op });
               followupToolMessages.push({
                 role: "tool",
@@ -348,12 +362,9 @@ export async function POST(req: NextRequest) {
               });
               if (retryCount < MAX_RETRIES) {
                 retryCount++;
-                needsAnotherIteration = true;
               }
             }
           }
-
-          if (!needsAnotherIteration) break;
 
           conversation = [
             ...conversation,

@@ -23,3 +23,5 @@ The upstream API has 143 frames and /find_template is one call per variation, so
 i should be ablt to click on elements so theyre referenced in the chat for ai (like how u can @ files in cursor)
 
 feature graphics
+
+upload multiple photos, drag and drop

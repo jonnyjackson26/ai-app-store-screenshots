@@ -63,9 +63,11 @@ const AccordionSection = ({ title, isOpen, onToggle, children }: AccordionSectio
       type="button"
       onClick={onToggle}
       aria-expanded={isOpen}
-      className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium transition-colors hover:bg-muted/50"
+      className="flex w-full items-center justify-between px-4 py-3.5 text-left transition-colors hover:bg-muted/50"
     >
-      <span>{title}</span>
+      <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        {title}
+      </span>
       <ChevronDown
         className={cn(
           "h-4 w-4 text-muted-foreground transition-transform duration-200",
@@ -313,7 +315,7 @@ export const SettingsSidebar = ({
             </div>
           </AccordionSection>
           <AccordionSection
-            title="Background"
+            title="Background color"
             isOpen={openSection === "background"}
             onToggle={() => toggleSection("background")}
           >

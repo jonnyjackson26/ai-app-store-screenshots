@@ -31,6 +31,7 @@ import {
   createFilter,
   downloadFile,
   isTextType,
+  stripPngAlpha,
   transformText
 } from "@/features/editor/utils";
 import {
@@ -72,12 +73,12 @@ const buildEditor = ({
   projectTitle,
   setProjectTitle,
 }: BuildEditorProps): Editor => {
-  const generateSaveOptions = () => {
+  const generateSaveOptions = (format: "png" | "jpeg") => {
     const { width, height, left, top } = getWorkspace() as fabric.Rect;
 
     return {
       name: "Image",
-      format: "png",
+      format,
       quality: 1,
       width,
       height,
@@ -86,10 +87,10 @@ const buildEditor = ({
     };
   };
 
-  // Captures one PNG dataURL per page by slicing the workspace along its
-  // width. Caller must have already reset the viewport transform.
+  // Captures one dataURL per page by slicing the workspace along its width.
+  // Caller must have already reset the viewport transform.
   // Returns [] when there's only one page (the main image already covers it).
-  const capturePages = (): string[] => {
+  const capturePages = (format: "png" | "jpeg"): string[] => {
     const workspace = getWorkspace() as
       | (fabric.Rect & { numPages?: number })
       | undefined;
@@ -111,7 +112,7 @@ const buildEditor = ({
     for (let i = 0; i < numPages; i++) {
       captures.push(
         canvas.toDataURL({
-          format: "png",
+          format,
           quality: 1,
           width: pageWidth,
           height,
@@ -145,13 +146,24 @@ const buildEditor = ({
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
-  const saveImage = (extension: string) => {
-    const options = generateSaveOptions();
+  const saveImage = async (
+    extension: "png" | "jpg",
+    format: "png" | "jpeg",
+  ) => {
+    const options = generateSaveOptions(format);
 
     canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
-    const fullDataUrl = canvas.toDataURL(options);
-    const pages = capturePages();
+    let fullDataUrl = canvas.toDataURL(options);
+    let pages = capturePages(format);
     autoZoom();
+
+    // App Store Connect rejects PNGs with an alpha channel; re-encode opaque.
+    if (format === "png") {
+      [fullDataUrl, pages] = await Promise.all([
+        stripPngAlpha(fullDataUrl),
+        Promise.all(pages.map(stripPngAlpha)),
+      ]);
+    }
 
     if (pages.length === 0) {
       // Single page: just the full image, no zip needed
@@ -159,12 +171,15 @@ const buildEditor = ({
       return;
     }
 
-    void downloadAsZip(fullDataUrl, pages, extension);
+    await downloadAsZip(fullDataUrl, pages, extension);
   };
 
-  const savePng = () => saveImage("png");
-  const saveSvg = () => saveImage("svg");
-  const saveJpg = () => saveImage("jpg");
+  const savePng = () => {
+    void saveImage("png", "png");
+  };
+  const saveJpg = () => {
+    void saveImage("jpg", "jpeg");
+  };
 
   const saveJson = async () => {
     const dataUrl = canvas.toJSON(JSON_KEYS);
@@ -300,7 +315,6 @@ const buildEditor = ({
     setProjectTitle,
     savePng,
     saveJpg,
-    saveSvg,
     saveJson,
     loadJson,
     save,

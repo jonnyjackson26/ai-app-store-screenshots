@@ -231,18 +231,6 @@ export const Navbar = ({
                   </p>
                 </div>
               </DropdownMenuItem>
-              <DropdownMenuItem
-                className="flex items-center gap-x-2"
-                onClick={() => editor?.saveSvg()}
-              >
-                <CiFileOn className="size-8" />
-                <div>
-                  <p>SVG</p>
-                  <p className="text-xs text-muted-foreground">
-                    Best for editing in vector software
-                  </p>
-                </div>
-              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

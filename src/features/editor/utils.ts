@@ -14,6 +14,25 @@ export function transformText(objects: any) {
   });
 };
 
+// App Store Connect rejects PNGs whose header declares an alpha channel,
+// even when every pixel is fully opaque. Re-render through a 2D context
+// created with { alpha: false } so the output PNG is RGB-only.
+export async function stripPngAlpha(dataUrl: string): Promise<string> {
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const i = new Image();
+    i.onload = () => resolve(i);
+    i.onerror = reject;
+    i.src = dataUrl;
+  });
+  const c = document.createElement("canvas");
+  c.width = img.naturalWidth;
+  c.height = img.naturalHeight;
+  const ctx = c.getContext("2d", { alpha: false });
+  if (!ctx) return dataUrl;
+  ctx.drawImage(img, 0, 0);
+  return c.toDataURL("image/png");
+}
+
 export function downloadFile(file: string, type: string, name?: string) {
   const anchorElement = document.createElement("a");
 

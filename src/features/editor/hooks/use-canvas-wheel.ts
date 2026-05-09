@@ -19,8 +19,13 @@ export const useCanvasWheel = ({ canvas }: UseCanvasWheelProps) => {
 
       // Browsers send wheel events with ctrlKey=true for trackpad pinch-zoom.
       if (e.ctrlKey || e.metaKey) {
+        // Pinch sends many small-delta events (~1-5); a real mouse wheel
+        // sends fewer large-delta events (~100). Use a steeper factor for
+        // small deltas so pinches feel responsive without making wheel
+        // clicks fly past the zoom.
+        const factor = Math.abs(e.deltaY) < 50 ? 0.98 : 0.999;
         let zoom = canvas.getZoom();
-        zoom *= Math.pow(0.999, e.deltaY);
+        zoom *= Math.pow(factor, e.deltaY);
         if (zoom > MAX_ZOOM) zoom = MAX_ZOOM;
         if (zoom < MIN_ZOOM) zoom = MIN_ZOOM;
         canvas.zoomToPoint(new fabric.Point(e.offsetX, e.offsetY), zoom);

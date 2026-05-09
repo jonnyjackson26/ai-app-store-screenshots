@@ -40,3 +40,6 @@ add direction to gradients
 i want to be able to tell the AI to make the screenshots/pages be for a iphone 6.9 in or for an andorid chromebook, etc (from the data in device-presets). add this to json. make it so switching canvas sizes resizes content
 
 border radius
+snap points on each page
+
+add "wall of apps" who have used this and got their app approved on apple/android

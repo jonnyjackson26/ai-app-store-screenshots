@@ -1,30 +1,34 @@
 # AI App Store Screenshots
 
-## 🛠️ Tech Stack
+A canvas-based editor for designing App Store / Play Store screenshots with AI assistance. **[Live Demo](https://ai-app-store-screenshots.vercel.app/)**
 
-**Frontend:** Next.js 14, React 18, TypeScript, TailwindCSS, Shadcn UI, Fabric.js   
-**State:** Zustand, TanStack Query
+![screenshot](docs/demo.png)
 
+## Tech Stack
 
-# setup
-```
+- **Frontend:** Next.js 14, React 18, TypeScript, TailwindCSS, Shadcn UI, Fabric.js
+- **State:** Zustand, TanStack Query
+- **AI:** OpenAI
+- **Uploads:** UploadThing
+
+## Setup
+
+```bash
 cp .env.example .env
-npm i
+npm install
 npm run dev
 ```
 
+Fill in `.env`:
 
-create a new app on uploadthing.com (basic account with 2gb storage free)
-fill
-UPLOADTHING_TOKEN=
-
-
-This lives locally on wsl in canva-clone repo
+- `UPLOADTHING_TOKEN` — create an app at [uploadthing.com](https://uploadthing.com) (free tier: 2 GB).
+- `OPENAI_API_KEY` — required for the AI features.
 
 ## Contributing
-I am not a designer! (Hence why I need AI to make nice screenshots for me) therefore, this open source project needs more templates — PRs welcome. To add one:
 
-1. Create a beautiful design
-2. Export the JSON and also a PNG.
-3. Put the combined PNG from the zip and the JSON within a new folder of public/templates
-4. Open a PR — no code changes needed, the Templates sidebar auto-discovers folders.
+PRs welcome — especially new templates. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+
+## License
+
+GNU Affero General Public License v3.0 (AGPL) - see [LICENSE.md](LICENSE.md)

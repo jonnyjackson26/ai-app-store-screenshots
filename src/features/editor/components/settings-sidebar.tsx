@@ -134,7 +134,17 @@ export const SettingsSidebar = ({
     setPresetId(match?.presetId ?? CUSTOM_PRESET_ID);
     if (match) setPlatform(match.platform);
   };
-  const changeNumPages = (value: string) => setNumPages(value);
+  const changeNumPages = (value: string) => {
+    setNumPages(value);
+    const parsed = parseInt(value, 10);
+    if (!parsed || parsed < 1) return;
+    editor?.changeSize({
+      width: parseInt(pageWidth, 10),
+      height: parseInt(height, 10),
+      numPages: parsed,
+      pageGap: parseInt(pageGap, 10) || 0,
+    });
+  };
   const changePageGap = (value: string) => setPageGap(value);
   const changeHeight = (value: string) => {
     setHeight(value);
@@ -219,6 +229,17 @@ export const SettingsSidebar = ({
               ))}
             </select>
           </div>
+          <div className="space-y-2">
+            <Label>Number of pages</Label>
+            <Input
+              placeholder="Number of pages"
+              value={numPages}
+              type="number"
+              min={1}
+              step={1}
+              onChange={(e) => changeNumPages(e.target.value)}
+            />
+          </div>
 
           <button
             type="button"
@@ -246,17 +267,6 @@ export const SettingsSidebar = ({
                   value={height}
                   type="number"
                   onChange={(e) => changeHeight(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Number of pages</Label>
-                <Input
-                  placeholder="Number of pages"
-                  value={numPages}
-                  type="number"
-                  min={1}
-                  step={1}
-                  onChange={(e) => changeNumPages(e.target.value)}
                 />
               </div>
               <div className="space-y-2">

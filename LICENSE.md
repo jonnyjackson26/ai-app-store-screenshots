@@ -1,5 +1,5 @@
 AI App Store Screenshots — a canvas-based editor for designing App Store / Play Store screenshots with AI assistance.
-Copyright (C) 2026 Jonny Jackson
+Copyright (C) 2026 Jonathan Jackson
 
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 

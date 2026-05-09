@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { ChevronDown } from "lucide-react";
 
 import {
   ActiveTool,
@@ -30,10 +31,51 @@ interface SettingsSidebarProps {
   editor: Editor | undefined;
   activeTool: ActiveTool;
   onChangeActiveTool: (tool: ActiveTool) => void;
-};
+}
+
+type SectionId = "advanced" | "background";
+
+type ResizeOverrides = Partial<{
+  width: number;
+  height: number;
+  numPages: number;
+  pageGap: number;
+}>;
 
 const SELECT_CLASSES =
   "h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring";
+
+const toIntOr = (value: string, fallback: number) => {
+  const parsed = parseInt(value, 10);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+interface AccordionSectionProps {
+  title: string;
+  isOpen: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}
+
+const AccordionSection = ({ title, isOpen, onToggle, children }: AccordionSectionProps) => (
+  <div className="border-b last:border-b-0">
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={isOpen}
+      className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium transition-colors hover:bg-muted/50"
+    >
+      <span>{title}</span>
+      <ChevronDown
+        className={cn(
+          "h-4 w-4 text-muted-foreground transition-transform duration-200",
+          isOpen && "rotate-180",
+        )}
+      />
+    </button>
+    {isOpen && <div className="px-4 pb-4">{children}</div>}
+  </div>
+);
 
 export const SettingsSidebar = ({
   editor,
@@ -49,7 +91,7 @@ export const SettingsSidebar = ({
   }, [workspace]);
   const initialPageWidth = useMemo(() => {
     const totalWidth = workspace?.width ?? 0;
-    const pages = parseInt(initialNumPages, 10) || DEFAULT_NUM_PAGES;
+    const pages = toIntOr(initialNumPages, DEFAULT_NUM_PAGES);
     return `${Math.round(totalWidth / pages)}`;
   }, [workspace, initialNumPages]);
   const initialPageGap = useMemo(() => {
@@ -62,9 +104,8 @@ export const SettingsSidebar = ({
     () => (workspace?.fill ? dematerializeFill(workspace.fill) : FILL_COLOR),
     [workspace],
   );
-
   const initialMatch = useMemo(
-    () => findPresetByDimensions(parseInt(initialPageWidth, 10), parseInt(initialHeight, 10)),
+    () => findPresetByDimensions(toIntOr(initialPageWidth, 0), toIntOr(initialHeight, 0)),
     [initialPageWidth, initialHeight],
   );
 
@@ -75,7 +116,7 @@ export const SettingsSidebar = ({
   const [background, setBackground] = useState<ColorValue>(initialBackground);
   const [platform, setPlatform] = useState<Platform>(initialMatch?.platform ?? "apple");
   const [presetId, setPresetId] = useState<string>(initialMatch?.presetId ?? CUSTOM_PRESET_ID);
-  const [showAdvanced, setShowAdvanced] = useState(!initialMatch);
+  const [openSection, setOpenSection] = useState<SectionId | null>(initialMatch ? null : "advanced");
 
   useEffect(() => {
     setPageWidth(initialPageWidth);
@@ -89,8 +130,7 @@ export const SettingsSidebar = ({
     } else {
       setPresetId(CUSTOM_PRESET_ID);
     }
-  },
-  [
+  }, [
     initialPageWidth,
     initialNumPages,
     initialPageGap,
@@ -99,88 +139,77 @@ export const SettingsSidebar = ({
     initialMatch,
   ]);
 
-  const applyPreset = (width: number, height: number) => {
-    setPageWidth(`${width}`);
-    setHeight(`${height}`);
+  const applyResize = (overrides: ResizeOverrides = {}) => {
     editor?.changeSize({
-      width,
-      height,
-      numPages: parseInt(numPages, 10) || DEFAULT_NUM_PAGES,
-      pageGap: parseInt(pageGap, 10) || 0,
+      width: overrides.width ?? toIntOr(pageWidth, 0),
+      height: overrides.height ?? toIntOr(height, 0),
+      numPages: overrides.numPages ?? toIntOr(numPages, DEFAULT_NUM_PAGES),
+      pageGap: overrides.pageGap ?? toIntOr(pageGap, 0),
     });
+  };
+
+  const syncPresetFromDimensions = (widthValue: string, heightValue: string) => {
+    const match = findPresetByDimensions(toIntOr(widthValue, 0), toIntOr(heightValue, 0));
+    setPresetId(match?.presetId ?? CUSTOM_PRESET_ID);
+    if (match) setPlatform(match.platform);
   };
 
   const onPlatformChange = (next: Platform) => {
     setPlatform(next);
     const first = DEVICE_PRESETS[next][0];
-    if (first) {
-      setPresetId(first.id);
-      applyPreset(first.width, first.height);
-    }
+    if (!first) return;
+    setPresetId(first.id);
+    setPageWidth(`${first.width}`);
+    setHeight(`${first.height}`);
+    applyResize({ width: first.width, height: first.height });
   };
 
   const onPresetChange = (id: string) => {
     setPresetId(id);
     if (id === CUSTOM_PRESET_ID) return;
     const preset = DEVICE_PRESETS[platform].find((p) => p.id === id);
-    if (preset) {
-      applyPreset(preset.width, preset.height);
-    }
+    if (!preset) return;
+    setPageWidth(`${preset.width}`);
+    setHeight(`${preset.height}`);
+    applyResize({ width: preset.width, height: preset.height });
+  };
+
+  const changeNumPages = (value: string) => {
+    setNumPages(value);
+    const parsed = parseInt(value, 10);
+    if (!Number.isFinite(parsed) || parsed < 1) return;
+    applyResize({ numPages: parsed });
   };
 
   const changePageWidth = (value: string) => {
     setPageWidth(value);
-    const match = findPresetByDimensions(parseInt(value, 10), parseInt(height, 10));
-    setPresetId(match?.presetId ?? CUSTOM_PRESET_ID);
-    if (match) setPlatform(match.platform);
+    syncPresetFromDimensions(value, height);
   };
-  const changeNumPages = (value: string) => {
-    setNumPages(value);
-    const parsed = parseInt(value, 10);
-    if (!parsed || parsed < 1) return;
-    editor?.changeSize({
-      width: parseInt(pageWidth, 10),
-      height: parseInt(height, 10),
-      numPages: parsed,
-      pageGap: parseInt(pageGap, 10) || 0,
-    });
-  };
-  const changePageGap = (value: string) => setPageGap(value);
+
   const changeHeight = (value: string) => {
     setHeight(value);
-    const match = findPresetByDimensions(parseInt(pageWidth, 10), parseInt(value, 10));
-    setPresetId(match?.presetId ?? CUSTOM_PRESET_ID);
-    if (match) setPlatform(match.platform);
+    syncPresetFromDimensions(pageWidth, value);
   };
+
+  const changePageGap = (value: string) => setPageGap(value);
+
   const changeBackground = (value: ColorValue) => {
     setBackground(value);
     editor?.changeBackground(value);
   };
 
-  const workspaceTargetSize = (() => {
+  const toggleSection = (id: SectionId) =>
+    setOpenSection((current) => (current === id ? null : id));
+
+  const workspaceTargetSize = useMemo(() => {
     const totalWidth = workspace?.width ?? 0;
-    const pages = parseInt(numPages, 10) || DEFAULT_NUM_PAGES;
+    const pages = toIntOr(numPages, DEFAULT_NUM_PAGES);
     const perPageWidth = pages > 0 ? Math.round(totalWidth / pages) : totalWidth;
     return {
       width: perPageWidth || 400,
       height: workspace?.height || 400,
     };
-  })();
-
-  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
-    editor?.changeSize({
-      width: parseInt(pageWidth, 10),
-      height: parseInt(height, 10),
-      numPages: parseInt(numPages, 10),
-      pageGap: parseInt(pageGap, 10) || 0,
-    });
-  }
-
-  const onClose = () => {
-    onChangeActiveTool("select");
-  };
+  }, [workspace, numPages]);
 
   const presets = DEVICE_PRESETS[platform];
   const isCustom = presetId === CUSTOM_PRESET_ID;
@@ -197,7 +226,7 @@ export const SettingsSidebar = ({
         description="Change the look of your workspace"
       />
       <ScrollArea>
-        <form className="space-y-4 p-4" onSubmit={onSubmit}>
+        <div className="space-y-4 p-4">
           <div className="space-y-2">
             <Label>Platform</Label>
             <select
@@ -240,17 +269,15 @@ export const SettingsSidebar = ({
               onChange={(e) => changeNumPages(e.target.value)}
             />
           </div>
+        </div>
 
-          <button
-            type="button"
-            onClick={() => setShowAdvanced((v) => !v)}
-            className="text-xs font-medium text-muted-foreground hover:text-foreground"
+        <div className="border-t">
+          <AccordionSection
+            title="Advanced sizing"
+            isOpen={openSection === "advanced"}
+            onToggle={() => toggleSection("advanced")}
           >
-            {showAdvanced ? "Hide advanced" : "Advanced"}
-          </button>
-
-          {showAdvanced && (
-            <div className="space-y-4 rounded-md border bg-muted/30 p-3">
+            <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Page width</Label>
                 <Input
@@ -280,21 +307,25 @@ export const SettingsSidebar = ({
                   onChange={(e) => changePageGap(e.target.value)}
                 />
               </div>
-              <Button type="submit" className="w-full">
+              <Button type="button" className="w-full" onClick={() => applyResize()}>
                 Resize
               </Button>
             </div>
-          )}
-        </form>
-        <div className="p-4">
-          <ColorPicker
-            value={background}
-            onChange={changeBackground}
-            targetSize={workspaceTargetSize}
-          />
+          </AccordionSection>
+          <AccordionSection
+            title="Background"
+            isOpen={openSection === "background"}
+            onToggle={() => toggleSection("background")}
+          >
+            <ColorPicker
+              value={background}
+              onChange={changeBackground}
+              targetSize={workspaceTargetSize}
+            />
+          </AccordionSection>
         </div>
       </ScrollArea>
-      <ToolSidebarClose onClick={onClose} />
+      <ToolSidebarClose onClick={() => onChangeActiveTool("select")} />
     </aside>
   );
 };

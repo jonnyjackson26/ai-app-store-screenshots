@@ -98,6 +98,9 @@ export interface SceneObject {
   top: number;
   width: number;
   height: number;
+  // 1-indexed page that the object's top-left corner sits on, clamped to
+  // [1, numPages]. Pre-computed so the AI doesn't have to derive it.
+  page?: number;
   angle?: number;
   opacity?: number;
   fill?: string;
@@ -112,12 +115,25 @@ export interface SceneObject {
   deviceFrame?: SceneDeviceFrame;
 }
 
+// Pre-computed bounding box for one page, in the canvas's logical (gap-free)
+// coordinate space — the same space object `left`/`top` live in.
+export interface ScenePageRect {
+  index: number;
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+  centerX: number;
+  centerY: number;
+}
+
 export interface ScenePage {
   width: number;
   height: number;
   numPages: number;
   pageGap: number;
   background: ColorValue;
+  pages: ScenePageRect[];
 }
 
 export interface SceneSummary {

@@ -7,7 +7,7 @@ import {
   type DeviceFrameMeta,
 } from "@/features/editor/types";
 import { dematerializeFill } from "@/features/editor/color-utils";
-import type { SceneObject, SceneSummary } from "./types";
+import type { SceneObject, ScenePageRect, SceneSummary } from "./types";
 
 type ObjWithCustom = fabric.Object & {
   id?: string;
@@ -59,13 +59,40 @@ export const buildSceneSummary = (canvas: fabric.Canvas): SceneSummary => {
   const pageGap = Math.max(0, workspace?.pageGap ?? DEFAULT_PAGE_GAP);
   const totalLogicalWidth = workspace?.width ?? 0;
   const pageWidth = totalLogicalWidth / numPages;
+  const pageHeight = workspace?.height ?? 0;
+  // The workspace is centerObject'd onto the fabric canvas at init, so its
+  // top-left is generally not (0, 0). Page boxes (and the per-object page
+  // tag) must be expressed in the same global fabric coords as object
+  // left/top — anchor everything to the workspace origin.
+  const wsLeft = workspace?.left ?? 0;
+  const wsTop = workspace?.top ?? 0;
+
+  // Pre-computed per-page rectangles in the canvas's logical (gap-free) space
+  // — pageGap is render-only (see _renderObjects in use-editor.ts), so object
+  // coordinates are continuous across pages.
+  const pages: ScenePageRect[] = Array.from({ length: numPages }, (_, i) => {
+    const left = wsLeft + i * pageWidth;
+    const right = left + pageWidth;
+    const top = wsTop;
+    const bottom = top + pageHeight;
+    return {
+      index: i + 1,
+      left: round(left),
+      right: round(right),
+      top: round(top),
+      bottom: round(bottom),
+      centerX: round(left + pageWidth / 2),
+      centerY: round(top + pageHeight / 2),
+    };
+  });
 
   const page = {
     width: round(pageWidth),
-    height: round(workspace?.height),
+    height: round(pageHeight),
     numPages,
     pageGap: round(pageGap),
     background: workspace?.fill ? dematerializeFill(workspace.fill) : "#ffffff",
+    pages,
   };
 
   let backfilled = false;
@@ -87,6 +114,11 @@ export const buildSceneSummary = (canvas: fabric.Canvas): SceneSummary => {
       width: round((obj.width ?? 0) * (obj.scaleX ?? 1)),
       height: round((obj.height ?? 0) * (obj.scaleY ?? 1)),
     };
+
+    if (pageWidth > 0) {
+      const rawPage = Math.floor(((obj.left ?? 0) - wsLeft) / pageWidth) + 1;
+      base.page = Math.min(Math.max(rawPage, 1), numPages);
+    }
 
     if (typeof obj.angle === "number" && obj.angle !== 0) base.angle = round(obj.angle);
     if (typeof obj.opacity === "number" && obj.opacity !== 1)
@@ -144,6 +176,14 @@ export const formatSceneForPrompt = (scene: SceneSummary): string => {
   lines.push(
     `  background: ${typeof bg === "string" ? bg : JSON.stringify(bg)}`,
   );
+  if (scene.page.pages.length > 0) {
+    lines.push("  pages:");
+    for (const p of scene.page.pages) {
+      lines.push(
+        `    - p=${p.index} left=${p.left} right=${p.right} top=${p.top} bottom=${p.bottom} centerX=${p.centerX} centerY=${p.centerY}`,
+      );
+    }
+  }
   lines.push("objects:");
   for (const o of scene.objects) {
     const parts: string[] = [
@@ -154,6 +194,7 @@ export const formatSceneForPrompt = (scene: SceneSummary): string => {
       `w=${o.width}`,
       `h=${o.height}`,
     ];
+    if (o.page != null) parts.push(`page=${o.page}`);
     if (o.angle != null) parts.push(`angle=${o.angle}`);
     if (o.opacity != null) parts.push(`opacity=${o.opacity}`);
     if (o.fill != null) parts.push(`fill=${o.fill}`);

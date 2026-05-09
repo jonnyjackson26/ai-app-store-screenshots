@@ -42,6 +42,10 @@ export const Navbar = ({
     "Start a new design?",
     "Any unsaved work on the current canvas will be lost. Export it first if you want to keep it."
   );
+  const [OpenConfirmDialog, confirmOpen] = useConfirm(
+    "Are you sure?",
+    "You are about to replace the current project with the file you open."
+  );
 
   const { openFilePicker } = useFilePicker({
     accept: ".json",
@@ -64,11 +68,19 @@ export const Navbar = ({
     }
   };
 
+  const onOpen = async () => {
+    const ok = await confirmOpen();
+    if (ok) {
+      openFilePicker();
+    }
+  };
+
   const hasFocusedTitle = useRef(false);
 
   return (
     <nav className="w-full flex items-center p-4 h-[68px] gap-x-8 border-b lg:pl-[34px]">
       <NewConfirmDialog />
+      <OpenConfirmDialog />
       <Logo />
       <div className="w-full flex items-center gap-x-1 h-full">
         <DropdownMenu modal={false}>
@@ -92,7 +104,7 @@ export const Navbar = ({
               </div>
             </DropdownMenuItem>
             <DropdownMenuItem
-              onClick={() => openFilePicker()}
+              onClick={onOpen}
               className="flex items-center gap-x-2"
             >
               <CiFileOn className="size-8" />

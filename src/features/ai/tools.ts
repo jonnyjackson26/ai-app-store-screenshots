@@ -19,11 +19,11 @@ const fillSchema = {
     },
     {
       type: "object",
-      description: "Fabric gradient. coords expect canvas-space pixels.",
+      description: "Fabric linear gradient. coords expect canvas-space pixels.",
       additionalProperties: false,
       required: ["type", "coords", "colorStops"],
       properties: {
-        type: { type: "string", enum: ["linear", "radial"] },
+        type: { type: "string", enum: ["linear"] },
         coords: {
           type: "object",
           additionalProperties: false,
@@ -33,8 +33,6 @@ const fillSchema = {
             y1: { type: "number" },
             x2: { type: "number" },
             y2: { type: "number" },
-            r1: { type: "number", description: "Inner radius (radial only)." },
-            r2: { type: "number", description: "Outer radius (radial only)." },
           },
         },
         colorStops: {

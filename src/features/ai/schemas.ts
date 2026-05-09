@@ -16,15 +16,13 @@ const ColorStringSchema = z
 
 const GradientFillSchema = z
   .object({
-    type: z.enum(["linear", "radial"]),
+    type: z.literal("linear"),
     coords: z
       .object({
         x1: z.number(),
         y1: z.number(),
         x2: z.number(),
         y2: z.number(),
-        r1: z.number().optional(),
-        r2: z.number().optional(),
       })
       .strict(),
     colorStops: z

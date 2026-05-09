@@ -12,13 +12,12 @@ import {
   angleFromCoords,
   colorValueToCss,
   coordsForAngle,
-  radialCoords,
 } from "@/features/editor/color-utils";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-type Mode = "solid" | "linear" | "radial";
+type Mode = "solid" | "gradient";
 
 interface ColorPickerProps {
   value: ColorValue;
@@ -29,33 +28,83 @@ interface ColorPickerProps {
 
 const DEFAULT_SIZE = { width: 400, height: 400 };
 
+const DEFAULT_GRADIENT_STOPS: GradientFill["colorStops"] = [
+  { offset: 0, color: "rgba(168, 85, 247, 1)" },
+  { offset: 1, color: "rgba(236, 72, 153, 1)" },
+];
+
+const parseRgba = (
+  color: string,
+): { r: number; g: number; b: number; a: number } => {
+  const m = color.match(
+    /rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*([\d.]+))?\s*\)/,
+  );
+  if (m) return { r: +m[1], g: +m[2], b: +m[3], a: m[4] ? +m[4] : 1 };
+  if (color.startsWith("#")) {
+    const hex =
+      color.length === 4
+        ? color
+            .slice(1)
+            .split("")
+            .map((c) => c + c)
+            .join("")
+        : color.slice(1);
+    return {
+      r: parseInt(hex.slice(0, 2), 16) || 0,
+      g: parseInt(hex.slice(2, 4), 16) || 0,
+      b: parseInt(hex.slice(4, 6), 16) || 0,
+      a: 1,
+    };
+  }
+  return { r: 0, g: 0, b: 0, a: 1 };
+};
+
+const interpolateColorAt = (
+  stops: GradientFill["colorStops"],
+  offset: number,
+): string => {
+  const sorted = [...stops].sort((a, b) => a.offset - b.offset);
+  if (offset <= sorted[0].offset) return sorted[0].color;
+  if (offset >= sorted[sorted.length - 1].offset)
+    return sorted[sorted.length - 1].color;
+  for (let i = 0; i < sorted.length - 1; i++) {
+    const a = sorted[i];
+    const b = sorted[i + 1];
+    if (offset >= a.offset && offset <= b.offset) {
+      const t = (offset - a.offset) / (b.offset - a.offset || 1);
+      const ca = parseRgba(a.color);
+      const cb = parseRgba(b.color);
+      return `rgba(${Math.round(ca.r + (cb.r - ca.r) * t)}, ${Math.round(
+        ca.g + (cb.g - ca.g) * t,
+      )}, ${Math.round(ca.b + (cb.b - ca.b) * t)}, ${(
+        ca.a +
+        (cb.a - ca.a) * t
+      ).toFixed(3)})`;
+    }
+  }
+  return sorted[0].color;
+};
+
 const cloneStops = (stops: GradientFill["colorStops"]): GradientFill["colorStops"] =>
   stops.map((s) => ({ offset: s.offset, color: s.color }));
 
 const seedGradient = (
-  type: "linear" | "radial",
-  baseColor: string,
   size: { width: number; height: number },
   existingStops?: GradientFill["colorStops"],
 ): GradientFill => {
   const colorStops =
     existingStops && existingStops.length >= 2
       ? cloneStops(existingStops)
-      : [
-          { offset: 0, color: baseColor },
-          { offset: 1, color: "rgba(0,0,0,0)" },
-        ];
-  const coords =
-    type === "linear"
-      ? coordsForAngle(0, size.width, size.height)
-      : radialCoords(size.width, size.height);
-  return { type, coords, colorStops };
+      : DEFAULT_GRADIENT_STOPS.map((s) => ({ ...s }));
+  return {
+    type: "linear",
+    coords: coordsForAngle(0, size.width, size.height),
+    colorStops,
+  };
 };
 
-const detectMode = (value: ColorValue): Mode => {
-  if (typeof value === "string") return "solid";
-  return value.type;
-};
+const detectMode = (value: ColorValue): Mode =>
+  typeof value === "string" ? "solid" : "gradient";
 
 export const ColorPicker = ({
   value,
@@ -99,17 +148,7 @@ export const ColorPicker = ({
       emit(fallback);
       return;
     }
-    // Going Solid -> gradient OR linear <-> radial.
-    const next = gradient
-      ? {
-          ...gradient,
-          type: nextMode,
-          coords:
-            nextMode === "linear"
-              ? coordsForAngle(0, size.width, size.height)
-              : radialCoords(size.width, size.height),
-        }
-      : seedGradient(nextMode, solidColor, size);
+    const next = gradient ?? seedGradient(size);
     setDraft(next);
     emit(next);
     setActiveStopIndex(0);
@@ -121,7 +160,7 @@ export const ColorPicker = ({
   };
 
   const updateAngle = (angle: number) => {
-    if (!gradient || gradient.type !== "linear") return;
+    if (!gradient) return;
     updateGradient({
       ...gradient,
       coords: coordsForAngle(angle, size.width, size.height),
@@ -147,14 +186,19 @@ export const ColorPicker = ({
   const addStop = () => {
     if (!gradient) return;
     const stops = cloneStops(gradient.colorStops);
-    // Insert a midpoint between the last two stops, biased toward the end.
     const sorted = [...stops].sort((a, b) => a.offset - b.offset);
-    const last = sorted[sorted.length - 1];
-    const prev = sorted[sorted.length - 2] ?? { offset: 0, color: last.color };
-    stops.push({
-      offset: Math.min(1, (prev.offset + last.offset) / 2 + 0.0001),
-      color: last.color,
-    });
+    // Insert at the midpoint of the largest gap so the new handle has room.
+    let bestOffset = 0.5;
+    let bestGap = -1;
+    for (let i = 0; i < sorted.length - 1; i++) {
+      const gap = sorted[i + 1].offset - sorted[i].offset;
+      if (gap > bestGap) {
+        bestGap = gap;
+        bestOffset = (sorted[i].offset + sorted[i + 1].offset) / 2;
+      }
+    }
+    const color = interpolateColorAt(stops, bestOffset);
+    stops.push({ offset: bestOffset, color });
     updateGradient({ ...gradient, colorStops: stops });
     setActiveStopIndex(stops.length - 1);
   };
@@ -164,7 +208,37 @@ export const ColorPicker = ({
     if (gradient.colorStops.length <= 2) return;
     const stops = cloneStops(gradient.colorStops).filter((_, i) => i !== index);
     updateGradient({ ...gradient, colorStops: stops });
-    setActiveStopIndex((i) => Math.min(i, stops.length - 1));
+    setActiveStopIndex((i) => Math.max(0, Math.min(i, stops.length - 1)));
+  };
+
+  const trackRef = useRef<HTMLDivElement>(null);
+
+  const offsetFromClientX = (clientX: number): number | null => {
+    const rect = trackRef.current?.getBoundingClientRect();
+    if (!rect || rect.width === 0) return null;
+    return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+  };
+
+  const beginDragStop = (
+    index: number,
+    e: React.PointerEvent<HTMLButtonElement>,
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setActiveStopIndex(index);
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+
+    const move = (ev: PointerEvent) => {
+      const next = offsetFromClientX(ev.clientX);
+      if (next === null) return;
+      updateStopOffset(index, next);
+    };
+    const up = () => {
+      document.removeEventListener("pointermove", move);
+      document.removeEventListener("pointerup", up);
+    };
+    document.addEventListener("pointermove", move);
+    document.addEventListener("pointerup", up);
   };
 
   const previewBackground = useMemo(() => {
@@ -172,27 +246,29 @@ export const ColorPicker = ({
     return gradient ? colorValueToCss(gradient) : solidColor;
   }, [mode, solidColor, gradient]);
 
-  const angle =
-    gradient && gradient.type === "linear" ? angleFromCoords(gradient.coords) : 0;
+  const angle = gradient ? angleFromCoords(gradient.coords) : 0;
   const activeStop = gradient?.colorStops[activeStopIndex];
 
   return (
     <div className="w-full space-y-4">
       {allowGradient && (
-        <div className="grid grid-cols-3 rounded-md border bg-muted/40 p-1 text-sm">
-          {(["solid", "linear", "radial"] as Mode[]).map((m) => (
+        <div className="grid grid-cols-2 rounded-md border bg-muted/40 p-1 text-sm">
+          {([
+            { id: "solid", label: "Solid color" },
+            { id: "gradient", label: "Gradient" },
+          ] as { id: Mode; label: string }[]).map((m) => (
             <button
-              key={m}
+              key={m.id}
               type="button"
-              onClick={() => switchMode(m)}
+              onClick={() => switchMode(m.id)}
               className={cn(
-                "py-1 rounded-sm capitalize transition-colors",
-                mode === m
+                "py-1 rounded-sm transition-colors",
+                mode === m.id
                   ? "bg-white shadow-sm font-medium"
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
-              {m}
+              {m.label}
             </button>
           ))}
         </div>
@@ -213,33 +289,9 @@ export const ColorPicker = ({
         </>
       )}
 
-      {mode !== "solid" && gradient && (
-        <div className="space-y-3">
-          <div
-            className={cn(
-              "h-12 w-full rounded-md border",
-              mode === "radial" && "rounded-full aspect-square h-auto max-w-[160px] mx-auto",
-            )}
-            style={{ background: previewBackground }}
-          />
-
-          {mode === "linear" && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>Angle</span>
-                <span>{angle}°</span>
-              </div>
-              <Slider
-                value={[angle]}
-                min={0}
-                max={359}
-                step={1}
-                onValueChange={(v) => updateAngle(v[0])}
-              />
-            </div>
-          )}
-
-          <div className="space-y-2">
+      {mode === "gradient" && gradient && (
+        <div className="space-y-4">
+          <div className="space-y-1">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-muted-foreground">
                 Color stops
@@ -249,65 +301,98 @@ export const ColorPicker = ({
                 size="sm"
                 variant="ghost"
                 onClick={addStop}
+                className="h-7 px-2"
               >
                 + Add stop
               </Button>
             </div>
-            <div className="space-y-2">
+            <div
+              ref={trackRef}
+              className="relative h-10 w-full rounded-md border"
+              style={{ background: previewBackground }}
+            />
+            <div className="relative h-6 w-full">
               {gradient.colorStops.map((stop, i) => (
-                <div
+                <button
                   key={i}
-                  onClick={() => setActiveStopIndex(i)}
+                  type="button"
+                  onPointerDown={(e) => beginDragStop(i, e)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveStopIndex(i);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Backspace" || e.key === "Delete") {
+                      e.preventDefault();
+                      removeStop(i);
+                    }
+                  }}
+                  style={{ left: `${stop.offset * 100}%` }}
                   className={cn(
-                    "flex items-center gap-2 rounded-md border p-2 cursor-pointer",
+                    "absolute top-0 -translate-x-1/2 size-5 rounded-full border-2 shadow cursor-grab active:cursor-grabbing transition-transform focus:outline-none",
                     activeStopIndex === i
-                      ? "border-blue-500 bg-blue-50"
-                      : "border-transparent hover:bg-muted/50",
+                      ? "border-blue-500 ring-2 ring-blue-300 scale-110"
+                      : "border-white",
                   )}
+                  aria-label={`Stop ${i + 1} at ${Math.round(stop.offset * 100)}%`}
                 >
-                  <div
-                    className="size-6 rounded border shrink-0"
+                  <span
+                    className="block size-full rounded-full"
                     style={{ background: stop.color }}
                   />
-                  <Slider
-                    value={[Math.round(stop.offset * 100)]}
-                    min={0}
-                    max={100}
-                    step={1}
-                    onValueChange={(v) => updateStopOffset(i, v[0] / 100)}
-                    className="flex-1"
-                  />
-                  <span className="text-xs text-muted-foreground w-10 text-right tabular-nums">
-                    {Math.round(stop.offset * 100)}%
-                  </span>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeStop(i);
-                    }}
-                    disabled={gradient.colorStops.length <= 2}
-                    className="text-muted-foreground hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed"
-                    aria-label="Remove stop"
-                  >
-                    <Trash2 className="size-4" />
-                  </button>
-                </div>
+                </button>
               ))}
             </div>
+            <p className="text-xs text-muted-foreground pt-1">
+              Drag a handle to move. Press Backspace to delete the selected stop.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>Angle</span>
+              <span>{angle}°</span>
+            </div>
+            <Slider
+              value={[angle]}
+              min={0}
+              max={359}
+              step={1}
+              onValueChange={(v) => updateAngle(v[0])}
+            />
           </div>
 
           {activeStop && (
             <div className="space-y-2">
-              <span className="text-xs font-medium text-muted-foreground">
-                Stop {activeStopIndex + 1} color
-              </span>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-muted-foreground">
+                  Stop color · {Math.round(activeStop.offset * 100)}%
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => removeStop(activeStopIndex)}
+                  disabled={gradient.colorStops.length <= 2}
+                  className="text-muted-foreground hover:text-red-500 h-7 px-2"
+                >
+                  <Trash2 className="size-4 mr-1" />
+                  Delete
+                </Button>
+              </div>
               <ChromePicker
                 color={activeStop.color}
                 onChange={(color) =>
                   updateStopColor(activeStopIndex, rgbaObjectToString(color.rgb))
                 }
                 className="border rounded-lg"
+              />
+              <CirclePicker
+                color={activeStop.color}
+                colors={colors}
+                onChangeComplete={(color) =>
+                  updateStopColor(activeStopIndex, rgbaObjectToString(color.rgb))
+                }
               />
             </div>
           )}

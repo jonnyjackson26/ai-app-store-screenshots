@@ -10,7 +10,7 @@ export const isGradientFill = (value: unknown): value is GradientFill => {
   if (!value || typeof value !== "object") return false;
   const v = value as Record<string, unknown>;
   return (
-    (v.type === "linear" || v.type === "radial") &&
+    v.type === "linear" &&
     Array.isArray(v.colorStops) &&
     !!v.coords &&
     typeof v.coords === "object"
@@ -42,8 +42,7 @@ export const dematerializeFill = (value: unknown): ColorValue => {
     coords?: GradientFill["coords"];
     colorStops?: unknown;
   };
-  const type = v.type;
-  if ((type !== "linear" && type !== "radial") || !v.coords) return FILL_COLOR;
+  if (v.type !== "linear" || !v.coords) return FILL_COLOR;
   const stops = Array.isArray(v.colorStops)
     ? (v.colorStops as { offset: number; color: string }[]).map((s) => ({
         offset: typeof s.offset === "number" ? s.offset : 0,
@@ -51,7 +50,7 @@ export const dematerializeFill = (value: unknown): ColorValue => {
       }))
     : [];
   if (stops.length < 2) return FILL_COLOR;
-  return { type, coords: v.coords, colorStops: stops };
+  return { type: "linear", coords: v.coords, colorStops: stops };
 };
 
 // Linear gradient coords for a given angle (degrees, 0° = left→right, 90° =
@@ -89,24 +88,6 @@ export const angleFromCoords = (coords: GradientFill["coords"]): number => {
   return ((Math.round(deg) % 360) + 360) % 360;
 };
 
-// Default coords for a radial gradient: centered, inner radius 0, outer
-// radius = half the longer side.
-export const radialCoords = (
-  width: number,
-  height: number,
-): GradientFill["coords"] => {
-  const cx = width / 2;
-  const cy = height / 2;
-  return {
-    x1: cx,
-    y1: cy,
-    x2: cx,
-    y2: cy,
-    r1: 0,
-    r2: Math.max(width, height) / 2,
-  };
-};
-
 // CSS string suitable for setting `style.background` to preview a ColorValue.
 export const colorValueToCss = (value: ColorValue): string => {
   if (typeof value === "string") return value;
@@ -115,13 +96,10 @@ export const colorValueToCss = (value: ColorValue): string => {
     .sort((a, b) => a.offset - b.offset)
     .map((s) => `${s.color} ${(s.offset * 100).toFixed(1)}%`)
     .join(", ");
-  if (value.type === "linear") {
-    // CSS angle convention has 0° pointing up; Fabric's convention has 0°
-    // pointing right (along +x). Convert: cssAngle = fabricAngle + 90°.
-    const angle = angleFromCoords(value.coords) + 90;
-    return `linear-gradient(${angle}deg, ${stops})`;
-  }
-  return `radial-gradient(circle, ${stops})`;
+  // CSS angle convention has 0° pointing up; Fabric's convention has 0°
+  // pointing right (along +x). Convert: cssAngle = fabricAngle + 90°.
+  const angle = angleFromCoords(value.coords) + 90;
+  return `linear-gradient(${angle}deg, ${stops})`;
 };
 
 export const firstStopColor = (value: ColorValue): string => {

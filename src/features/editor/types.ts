@@ -140,14 +140,12 @@ export const FONT_SIZE = 32;
 export const FONT_WEIGHT = 400;
 
 export interface GradientFill {
-  type: "linear" | "radial";
+  type: "linear";
   coords: {
     x1: number;
     y1: number;
     x2: number;
     y2: number;
-    r1?: number;
-    r2?: number;
   };
   colorStops: { offset: number; color: string }[];
 }

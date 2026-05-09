@@ -218,9 +218,14 @@ export const applyOps = async (
         numPages?: number;
         pageGap?: number;
       };
-      const nextWidth = op.props.width ?? ws.width ?? 0;
+      // ws.width is the TOTAL logical width across all pages, but
+      // editor.changeSize expects value.width to be PER-PAGE (it multiplies
+      // by numPages internally). Convert before falling back.
+      const currentNumPages = Math.max(1, Math.floor(ws.numPages ?? 1));
+      const currentPageWidth = (ws.width ?? 0) / currentNumPages;
+      const nextWidth = op.props.width ?? currentPageWidth;
       const nextHeight = op.props.height ?? ws.height ?? 0;
-      const nextNumPages = op.props.numPages ?? ws.numPages ?? 1;
+      const nextNumPages = op.props.numPages ?? currentNumPages;
       const nextPageGap = op.props.pageGap ?? ws.pageGap ?? 0;
       // changeSize calls save() internally — fine when caller has cleared
       // skipSave intentionally; harmless when skipSave is set, since

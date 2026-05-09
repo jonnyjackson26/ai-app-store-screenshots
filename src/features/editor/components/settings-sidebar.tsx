@@ -203,15 +203,17 @@ export const SettingsSidebar = ({
   const toggleSection = (id: SectionId) =>
     setOpenSection((current) => (current === id ? null : id));
 
-  const workspaceTargetSize = useMemo(() => {
-    const totalWidth = workspace?.width ?? 0;
-    const pages = toIntOr(numPages, DEFAULT_NUM_PAGES);
-    const perPageWidth = pages > 0 ? Math.round(totalWidth / pages) : totalWidth;
-    return {
-      width: perPageWidth || 400,
+  // Gradient coords are in the workspace rect's local pixel space, and the
+  // rect spans the full multi-page document width. Sizing the picker to a
+  // single page would clamp the gradient to page 1 and leave pages 2+ showing
+  // only the trailing stop color.
+  const workspaceTargetSize = useMemo(
+    () => ({
+      width: workspace?.width || 400,
       height: workspace?.height || 400,
-    };
-  }, [workspace, numPages]);
+    }),
+    [workspace],
+  );
 
   const presets = DEVICE_PRESETS[platform];
   const isCustom = presetId === CUSTOM_PRESET_ID;

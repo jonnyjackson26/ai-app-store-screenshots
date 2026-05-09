@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { useEffect, useState } from "react";
 
 import {
   ActiveTool,
@@ -10,7 +10,7 @@ import { ToolSidebarHeader } from "@/features/editor/components/tool-sidebar-hea
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useConfirm } from "@/hooks/use-confirm";
-import { localTemplates, LocalTemplate } from "@/lib/templates";
+import { LocalTemplate } from "@/lib/templates";
 
 interface TemplateSidebarProps {
   editor: Editor | undefined;
@@ -27,6 +27,21 @@ export const TemplateSidebar = ({
     "Are you sure?",
     "You are about to replace the current project with this template."
   );
+
+  const [templates, setTemplates] = useState<LocalTemplate[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/templates")
+      .then((res) => (res.ok ? res.json() : []))
+      .catch(() => [])
+      .then((data: LocalTemplate[]) => {
+        if (!cancelled) setTemplates(data);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const onClose = () => {
     onChangeActiveTool("select");
@@ -54,29 +69,21 @@ export const TemplateSidebar = ({
         description="Choose from a variety of templates to get started"
       />
       <ScrollArea>
-        <div className="p-4">
-          <div className="grid grid-cols-2 gap-4">
-            {localTemplates.map((template) => (
-              <button
-                style={{
-                  aspectRatio: `${template.width}/${template.height}`,
-                }}
-                onClick={() => onClick(template)}
-                key={template.id}
-                className="relative w-full group hover:opacity-75 transition bg-muted rounded-sm overflow-hidden border"
-              >
-                <Image
-                  fill
-                  src={template.thumbnailUrl}
-                  alt={template.name}
-                  className="object-cover"
-                />
-                <div className="opacity-0 group-hover:opacity-100 absolute left-0 bottom-0 w-full text-[10px] truncate text-white p-1 bg-black/50 text-left">
-                  {template.name}
-                </div>
-              </button>
-            ))}
-          </div>
+        <div className="p-4 flex flex-col gap-4">
+          {templates.map((template) => (
+            <button
+              onClick={() => onClick(template)}
+              key={template.id}
+              className="w-full group hover:opacity-75 transition bg-muted rounded-sm overflow-hidden border"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={template.thumbnailUrl}
+                alt={template.id}
+                className="block w-full h-auto"
+              />
+            </button>
+          ))}
         </div>
       </ScrollArea>
       <ToolSidebarClose onClick={onClose} />

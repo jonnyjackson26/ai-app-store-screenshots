@@ -20,3 +20,11 @@ UPLOADTHING_TOKEN=
 
 
 This lives locally on wsl in canva-clone repo
+
+## Contributing
+I am not a designer! (Hence why I need AI to make nice screenshots for me) therefore, this open source project needs more templates — PRs welcome. To add one:
+
+1. Create a beautiful design
+2. Export the JSON and also a PNG.
+3. Put the combined PNG from the zip and the JSON within a new folder of public/templates
+4. Open a PR — no code changes needed, the Templates sidebar auto-discovers folders.

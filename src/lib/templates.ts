@@ -1,28 +1,13 @@
 export interface LocalTemplate {
   id: string;
-  name: string;
-  width: number;
-  height: number;
   json: string;
   thumbnailUrl: string;
 }
 
-const template = (id: string, name: string, width = 900, height = 1200): LocalTemplate => ({
-  id,
-  name,
-  width,
-  height,
-  json: `/templates/${id}/${id}.json`,
-  thumbnailUrl: `/templates/${id}/${id}.png`,
-});
+export const DEFAULT_TEMPLATE_ID = "default";
 
-export const localTemplates: LocalTemplate[] = [
-  template("default", "Default"),
-  template("flash_sale", "Flash Sale"),
-  template("travel", "Travel"),
-  template("car_sale", "Car Sale"),
-  template("coming_soon", "Coming Soon"),
-  template("advanced","Advanced")
-];
-
-export const defaultTemplate = localTemplates[0];
+export const defaultTemplate: LocalTemplate = {
+  id: DEFAULT_TEMPLATE_ID,
+  json: `/templates/${DEFAULT_TEMPLATE_ID}/${DEFAULT_TEMPLATE_ID}.json`,
+  thumbnailUrl: `/templates/${DEFAULT_TEMPLATE_ID}/${DEFAULT_TEMPLATE_ID}.png`,
+};

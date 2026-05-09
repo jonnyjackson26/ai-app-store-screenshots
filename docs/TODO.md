@@ -25,3 +25,5 @@ i should be ablt to click on elements so theyre referenced in the chat for ai (l
 feature graphics
 
 upload multiple photos, drag and drop
+
+on export, have a popup saying something like "made something nice? wanna share - add this design as a template" - then a button that opens a PR to github for me to review

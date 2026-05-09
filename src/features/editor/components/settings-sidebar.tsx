@@ -8,6 +8,13 @@ import {
   Editor,
   FILL_COLOR,
 } from "@/features/editor/types";
+import {
+  CUSTOM_PRESET_ID,
+  DEVICE_PRESETS,
+  PLATFORM_LABELS,
+  Platform,
+  findPresetByDimensions,
+} from "@/features/editor/device-presets";
 import { dematerializeFill } from "@/features/editor/color-utils";
 import { ToolSidebarClose } from "@/features/editor/components/tool-sidebar-close";
 import { ToolSidebarHeader } from "@/features/editor/components/tool-sidebar-header";
@@ -24,6 +31,9 @@ interface SettingsSidebarProps {
   activeTool: ActiveTool;
   onChangeActiveTool: (tool: ActiveTool) => void;
 };
+
+const SELECT_CLASSES =
+  "h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring";
 
 export const SettingsSidebar = ({
   editor,
@@ -53,11 +63,19 @@ export const SettingsSidebar = ({
     [workspace],
   );
 
+  const initialMatch = useMemo(
+    () => findPresetByDimensions(parseInt(initialPageWidth, 10), parseInt(initialHeight, 10)),
+    [initialPageWidth, initialHeight],
+  );
+
   const [pageWidth, setPageWidth] = useState(initialPageWidth);
   const [numPages, setNumPages] = useState(initialNumPages);
   const [pageGap, setPageGap] = useState(initialPageGap);
   const [height, setHeight] = useState(initialHeight);
   const [background, setBackground] = useState<ColorValue>(initialBackground);
+  const [platform, setPlatform] = useState<Platform>(initialMatch?.platform ?? "apple");
+  const [presetId, setPresetId] = useState<string>(initialMatch?.presetId ?? CUSTOM_PRESET_ID);
+  const [showAdvanced, setShowAdvanced] = useState(!initialMatch);
 
   useEffect(() => {
     setPageWidth(initialPageWidth);
@@ -65,19 +83,65 @@ export const SettingsSidebar = ({
     setPageGap(initialPageGap);
     setHeight(initialHeight);
     setBackground(initialBackground);
+    if (initialMatch) {
+      setPlatform(initialMatch.platform);
+      setPresetId(initialMatch.presetId);
+    } else {
+      setPresetId(CUSTOM_PRESET_ID);
+    }
   },
   [
     initialPageWidth,
     initialNumPages,
     initialPageGap,
     initialHeight,
-    initialBackground
+    initialBackground,
+    initialMatch,
   ]);
 
-  const changePageWidth = (value: string) => setPageWidth(value);
+  const applyPreset = (width: number, height: number) => {
+    setPageWidth(`${width}`);
+    setHeight(`${height}`);
+    editor?.changeSize({
+      width,
+      height,
+      numPages: parseInt(numPages, 10) || DEFAULT_NUM_PAGES,
+      pageGap: parseInt(pageGap, 10) || 0,
+    });
+  };
+
+  const onPlatformChange = (next: Platform) => {
+    setPlatform(next);
+    const first = DEVICE_PRESETS[next][0];
+    if (first) {
+      setPresetId(first.id);
+      applyPreset(first.width, first.height);
+    }
+  };
+
+  const onPresetChange = (id: string) => {
+    setPresetId(id);
+    if (id === CUSTOM_PRESET_ID) return;
+    const preset = DEVICE_PRESETS[platform].find((p) => p.id === id);
+    if (preset) {
+      applyPreset(preset.width, preset.height);
+    }
+  };
+
+  const changePageWidth = (value: string) => {
+    setPageWidth(value);
+    const match = findPresetByDimensions(parseInt(value, 10), parseInt(height, 10));
+    setPresetId(match?.presetId ?? CUSTOM_PRESET_ID);
+    if (match) setPlatform(match.platform);
+  };
   const changeNumPages = (value: string) => setNumPages(value);
   const changePageGap = (value: string) => setPageGap(value);
-  const changeHeight = (value: string) => setHeight(value);
+  const changeHeight = (value: string) => {
+    setHeight(value);
+    const match = findPresetByDimensions(parseInt(pageWidth, 10), parseInt(value, 10));
+    setPresetId(match?.presetId ?? CUSTOM_PRESET_ID);
+    if (match) setPlatform(match.platform);
+  };
   const changeBackground = (value: ColorValue) => {
     setBackground(value);
     editor?.changeBackground(value);
@@ -108,6 +172,9 @@ export const SettingsSidebar = ({
     onChangeActiveTool("select");
   };
 
+  const presets = DEVICE_PRESETS[platform];
+  const isCustom = presetId === CUSTOM_PRESET_ID;
+
   return (
     <aside
       className={cn(
@@ -122,56 +189,92 @@ export const SettingsSidebar = ({
       <ScrollArea>
         <form className="space-y-4 p-4" onSubmit={onSubmit}>
           <div className="space-y-2">
-            <Label>
-              Height
-            </Label>
-            <Input
-              placeholder="Height"
-              value={height}
-              type="number"
-              onChange={(e) => changeHeight(e.target.value)}
-            />
+            <Label>Platform</Label>
+            <select
+              value={platform}
+              onChange={(e) => onPlatformChange(e.target.value as Platform)}
+              className={SELECT_CLASSES}
+            >
+              {(Object.keys(PLATFORM_LABELS) as Platform[]).map((p) => (
+                <option key={p} value={p}>
+                  {PLATFORM_LABELS[p]}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="space-y-2">
-            <Label>
-              Page width
-            </Label>
-            <Input
-              placeholder="Page width"
-              value={pageWidth}
-              type="number"
-              onChange={(e) => changePageWidth(e.target.value)}
-            />
+            <Label>Screenshot size</Label>
+            <select
+              value={presetId}
+              onChange={(e) => onPresetChange(e.target.value)}
+              className={SELECT_CLASSES}
+            >
+              {isCustom && (
+                <option value={CUSTOM_PRESET_ID}>Custom dimensions</option>
+              )}
+              {presets.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.label} ({p.width} × {p.height})
+                </option>
+              ))}
+            </select>
           </div>
-          <div className="space-y-2">
-            <Label>
-              Number of pages
-            </Label>
-            <Input
-              placeholder="Number of pages"
-              value={numPages}
-              type="number"
-              min={1}
-              step={1}
-              onChange={(e) => changeNumPages(e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>
-              Page gap
-            </Label>
-            <Input
-              placeholder="Page gap"
-              value={pageGap}
-              type="number"
-              min={0}
-              step={1}
-              onChange={(e) => changePageGap(e.target.value)}
-            />
-          </div>
-          <Button type="submit" className="w-full">
-            Resize
-          </Button>
+
+          <button
+            type="button"
+            onClick={() => setShowAdvanced((v) => !v)}
+            className="text-xs font-medium text-muted-foreground hover:text-foreground"
+          >
+            {showAdvanced ? "Hide advanced" : "Advanced"}
+          </button>
+
+          {showAdvanced && (
+            <div className="space-y-4 rounded-md border bg-muted/30 p-3">
+              <div className="space-y-2">
+                <Label>Page width</Label>
+                <Input
+                  placeholder="Page width"
+                  value={pageWidth}
+                  type="number"
+                  onChange={(e) => changePageWidth(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Height</Label>
+                <Input
+                  placeholder="Height"
+                  value={height}
+                  type="number"
+                  onChange={(e) => changeHeight(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Number of pages</Label>
+                <Input
+                  placeholder="Number of pages"
+                  value={numPages}
+                  type="number"
+                  min={1}
+                  step={1}
+                  onChange={(e) => changeNumPages(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Page gap</Label>
+                <Input
+                  placeholder="Page gap"
+                  value={pageGap}
+                  type="number"
+                  min={0}
+                  step={1}
+                  onChange={(e) => changePageGap(e.target.value)}
+                />
+              </div>
+              <Button type="submit" className="w-full">
+                Resize
+              </Button>
+            </div>
+          )}
         </form>
         <div className="p-4">
           <ColorPicker

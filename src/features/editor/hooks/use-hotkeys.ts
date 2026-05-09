@@ -8,15 +8,22 @@ interface UseHotkeysProps {
   save: (skip?: boolean) => void;
   copy: () => void;
   paste: () => void;
+  setSpacePanning: (value: boolean) => void;
 }
 
-export const useHotkeys = ({ canvas, undo, redo, save, copy, paste }: UseHotkeysProps) => {
+export const useHotkeys = ({ canvas, undo, redo, save, copy, paste, setSpacePanning }: UseHotkeysProps) => {
   useEvent("keydown", (event) => {
     const isCtrlKey = event.ctrlKey || event.metaKey;
     const isBackspace = event.key === "Backspace";
     const isInput = ["INPUT", "TEXTAREA"].includes((event.target as HTMLElement).tagName);
 
     if (isInput) return;
+
+    if (event.code === "Space") {
+      event.preventDefault();
+      if (!event.repeat) setSpacePanning(true);
+      return;
+    }
 
     // delete key
     if (event.keyCode === 46) {
@@ -63,6 +70,12 @@ export const useHotkeys = ({ canvas, undo, redo, save, copy, paste }: UseHotkeys
 
       canvas?.setActiveObject(new fabric.ActiveSelection(allObjects, { canvas }));
       canvas?.renderAll();
+    }
+  });
+
+  useEvent("keyup", (event) => {
+    if (event.code === "Space") {
+      setSpacePanning(false);
     }
   });
 };

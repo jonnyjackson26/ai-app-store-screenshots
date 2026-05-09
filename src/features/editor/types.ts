@@ -117,6 +117,7 @@ export const colors = [
 
 export type ActiveTool =
   | "select"
+  | "pan"
   | "elements"
   | "text"
   | "images"
@@ -208,6 +209,8 @@ export interface EditorHookProps {
   defaultWidth?: number;
   defaultHeight?: number;
   clearSelectionCallback?: () => void;
+  isPanning: boolean;
+  setSpacePanning: (value: boolean) => void;
 };
 
 export type BuildEditorProps = {

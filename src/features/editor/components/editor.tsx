@@ -53,6 +53,7 @@ export const Editor = () => {
 
 const EditorBody = ({ defaultState }: { defaultState: string | undefined }) => {
   const [activeTool, setActiveTool] = useState<ActiveTool>("select");
+  const [isSpacePanning, setIsSpacePanning] = useState(false);
   // Shared with useJsonSync (suppresses JSON-editor refresh during AI preview)
   // and useAiChat (set true while applying ops to the canvas).
   const aiApplying = useRef(false);
@@ -63,11 +64,15 @@ const EditorBody = ({ defaultState }: { defaultState: string | undefined }) => {
     }
   }, [activeTool]);
 
+  const isPanning = activeTool === "pan" || isSpacePanning;
+
   const { init, editor } = useEditor({
     defaultWidth: 900,
     defaultHeight: 1200,
     clearSelectionCallback: onClearSelection,
     defaultState,
+    isPanning,
+    setSpacePanning: setIsSpacePanning,
   });
 
   const onChangeActiveTool = useCallback((tool: ActiveTool) => {

@@ -39,6 +39,7 @@ import {
   materializeFill,
 } from "@/features/editor/color-utils";
 import { useHotkeys } from "@/features/editor/hooks/use-hotkeys";
+import { usePan } from "@/features/editor/hooks/use-pan";
 import { useClipboard } from "@/features/editor/hooks//use-clipboard";
 import { useAutoResize } from "@/features/editor/hooks/use-auto-resize";
 import { useCanvasEvents } from "@/features/editor/hooks/use-canvas-events";
@@ -918,6 +919,8 @@ export const useEditor = ({
   defaultHeight,
   defaultWidth,
   clearSelectionCallback,
+  isPanning,
+  setSpacePanning,
 }: EditorHookProps) => {
   const initialState = useRef(defaultState);
   const initialWidth = useRef(defaultWidth);
@@ -970,6 +973,12 @@ export const useEditor = ({
     paste,
     save,
     canvas,
+    setSpacePanning,
+  });
+
+  usePan({
+    canvas,
+    isPanning,
   });
 
   useLoadState({

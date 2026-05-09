@@ -7,6 +7,7 @@ import {
   ChevronDown,
   Download,
   FilePlus,
+  Hand,
   MousePointerClick,
   Redo2,
   Undo2
@@ -139,6 +140,16 @@ export const Navbar = ({
             className={cn(activeTool === "select" && "bg-gray-100")}
           >
             <MousePointerClick className="size-4" />
+          </Button>
+        </Hint>
+        <Hint label="Pan (hold Space)" side="bottom" sideOffset={10}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => onChangeActiveTool("pan")}
+            className={cn(activeTool === "pan" && "bg-gray-100")}
+          >
+            <Hand className="size-4" />
           </Button>
         </Hint>
         <Hint label="Undo" side="bottom" sideOffset={10}>

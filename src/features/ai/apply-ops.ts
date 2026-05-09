@@ -195,16 +195,20 @@ export const applyOps = async (
           );
         });
       } else {
-        if (!existing) continue;
-        // Update the metadata; leave cachedKey on the OLD value so the
-        // post-applyOps reconcileDeviceFrames() picks up the mismatch and
-        // re-bakes the framed PNG.
+        // Either swapping the frame on an already-framed image, or wrapping a
+        // bare screenshot for the first time. In both cases we just stamp the
+        // metadata with a stale cachedKey — reconcileDeviceFrames() runs after
+        // applyOps and bakes the framed PNG against the upstream API.
+        const sourceUrl =
+          existing?.sourceUrl ||
+          (typeof image.getSrc === "function" ? image.getSrc() : "");
+        if (!sourceUrl) continue;
         (image as ObjWithCustom).deviceFrame = {
           category: op.frame.category,
           device: op.frame.device,
           variation: op.frame.variation,
-          sourceUrl: existing.sourceUrl,
-          cachedKey: existing.cachedKey,
+          sourceUrl,
+          cachedKey: existing?.cachedKey ?? "",
         };
       }
     } else if (op.kind === "set_page_settings") {

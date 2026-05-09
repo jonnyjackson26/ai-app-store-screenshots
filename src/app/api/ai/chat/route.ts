@@ -192,15 +192,6 @@ const buildOpFromToolCall = (
           error: `Unknown frame ${parsed.data.frame.category}/${parsed.data.frame.device}/${parsed.data.frame.variation}. Use one of the valid (category, device, variation) tuples from the catalog.`,
         };
       }
-      // The image must already have a deviceFrame (so we know its sourceUrl).
-      // Without that, the AI would need to upload a screenshot, which it
-      // can't do — guard so the model doesn't try.
-      if (!target.deviceFrame) {
-        return {
-          ok: false,
-          error: `Image "${parsed.data.targetId}" has no existing deviceFrame; the user must apply a frame from the sidebar first before the AI can swap it.`,
-        };
-      }
     } else if (!target.deviceFrame) {
       return {
         ok: false,

@@ -86,8 +86,8 @@ User: "Put the logo on top of the photo" (logo id 'l333', photo id 'p444')
 # Device frames (mockup screenshots wrapped in a phone/tablet bezel)
 - Some images on the canvas are screenshots wrapped in a device frame (iPhone, iPad, Android phone, Android tablet). The scene summary marks these with a \`deviceFrame=<category>/<device>/<variation>\` field on the image.
 - The full set of available frames is in the developer message ("Device frame catalog"). Format: \`<device-slug> (<Human Label>): <variation>#<hex_color>, ...\`. Each line lists a model and every variation/color it supports. Use the slugs verbatim — they are the only valid values.
-- To change a frame on an existing framed image, call \`set_device_frame\` with \`frame: { category, device, variation }\`. To remove the frame and revert to the bare screenshot, pass \`frame: null\`.
-- You can ONLY change frames on images that already have \`deviceFrame\` metadata (the user applies the first frame from the sidebar). If the user asks to put a frame around an unframed image, explain that they need to apply one from the Images sidebar first.
+- Call \`set_device_frame\` with \`frame: { category, device, variation }\` to wrap an unframed image in a device frame, or to swap the frame on an already-framed image. Pass \`frame: null\` to remove the frame and revert to the bare screenshot.
+- For unframed images: pick a sensible default — iPhone for portrait phone-shaped images, iPad for portrait tablet-shaped images, and prefer the first variation in the catalog if the user hasn't named a colour.
 - When choosing a variation for a colour request, match against the hex codes in the catalog. "Orange" → look for hex like \`#fa…\` / \`#fd…\` in the warm orange band; "blue" → \`#22…\`/\`#27…\` etc. Pick the closest match.
 - When asked about available options ("what frames can I use?"), summarise from the catalog — don't dump the whole list verbatim unless asked.
 - Pages: an object's page is determined by its \`left\` coordinate. With page width W and N pages, page k (1-indexed) covers \`left ∈ [(k-1)·(W+pageGap), k·W + (k-1)·pageGap)\`. Use this to resolve "page 2's phone".
@@ -108,5 +108,11 @@ User: "Make the tablet be an apple ipad m4" (scene has 'imgT' with deviceFrame=a
 
 User: "Remove the frame from the first phone" (image 'imgA' has deviceFrame=apple-iphone/...)
 → set_device_frame(targetId='imgA', frame=null, summary="Remove device frame")
+
+User: "Put an iPhone frame on this image" (image 'imgC' has src=… and no deviceFrame)
+→ set_device_frame(targetId='imgC', frame={category:'apple-iphone', device:'17-pro', variation:'cosmic-orange'}, summary="Wrap image in iPhone 17 Pro frame")
+
+User: "Put a frame on the screenshot, make it an Android" (image 'imgD' has no deviceFrame)
+→ set_device_frame(targetId='imgD', frame={category:'android-phone', device:'pixel-9-pro-xl', variation:'obsidian'}, summary="Wrap screenshot in Pixel 9 Pro XL frame")
 
 Always include a short text reply (1-2 sentences) summarizing what you did or asking a clarifying question. The text reply is required even when you also call tools. Examples: "Updated the title and resized the hero." / "Made all body text 18pt." / "I'm not sure which element you mean — could you point to it?"`;

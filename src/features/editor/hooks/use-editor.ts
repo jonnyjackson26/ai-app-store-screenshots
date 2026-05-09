@@ -40,6 +40,7 @@ import {
 } from "@/features/editor/color-utils";
 import { useHotkeys } from "@/features/editor/hooks/use-hotkeys";
 import { usePan } from "@/features/editor/hooks/use-pan";
+import { useCanvasWheel } from "@/features/editor/hooks/use-canvas-wheel";
 import { useClipboard } from "@/features/editor/hooks//use-clipboard";
 import { useAutoResize } from "@/features/editor/hooks/use-auto-resize";
 import { useCanvasEvents } from "@/features/editor/hooks/use-canvas-events";
@@ -979,6 +980,10 @@ export const useEditor = ({
   usePan({
     canvas,
     isPanning,
+  });
+
+  useCanvasWheel({
+    canvas,
   });
 
   useLoadState({

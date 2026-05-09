@@ -14,11 +14,14 @@ export const usePan = ({ canvas, isPanning }: UsePanProps) => {
     const prevSkipTargetFind = canvas.skipTargetFind;
     const prevDefaultCursor = canvas.defaultCursor;
     const prevHoverCursor = canvas.hoverCursor;
+    const upperEl = (canvas as unknown as { upperCanvasEl?: HTMLCanvasElement }).upperCanvasEl;
+    const prevDomCursor = upperEl?.style.cursor ?? "";
 
     canvas.selection = false;
     canvas.skipTargetFind = true;
     canvas.defaultCursor = "grab";
     canvas.hoverCursor = "grab";
+    if (upperEl) upperEl.style.cursor = "grab";
     canvas.discardActiveObject();
     canvas.requestRenderAll();
 
@@ -33,6 +36,7 @@ export const usePan = ({ canvas, isPanning }: UsePanProps) => {
       lastY = e.clientY;
       canvas.defaultCursor = "grabbing";
       canvas.hoverCursor = "grabbing";
+      if (upperEl) upperEl.style.cursor = "grabbing";
       canvas.setCursor("grabbing");
     };
 
@@ -52,6 +56,7 @@ export const usePan = ({ canvas, isPanning }: UsePanProps) => {
       isDragging = false;
       canvas.defaultCursor = "grab";
       canvas.hoverCursor = "grab";
+      if (upperEl) upperEl.style.cursor = "grab";
       canvas.setCursor("grab");
     };
 
@@ -68,6 +73,7 @@ export const usePan = ({ canvas, isPanning }: UsePanProps) => {
       canvas.skipTargetFind = prevSkipTargetFind;
       canvas.defaultCursor = prevDefaultCursor;
       canvas.hoverCursor = prevHoverCursor;
+      if (upperEl) upperEl.style.cursor = prevDomCursor;
       canvas.setCursor(prevDefaultCursor ?? "default");
     };
   }, [canvas, isPanning]);

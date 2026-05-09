@@ -2,9 +2,8 @@
 
 import {
   FileJson,
-  LayoutTemplate,
   ImageIcon,
-  Pencil,
+  LayoutTemplate,
   Settings,
   Shapes,
   Sparkles,
@@ -28,7 +27,7 @@ export const Sidebar = ({
       <ul className="flex flex-col">
         <SidebarItem
           icon={LayoutTemplate}
-          label="Design"
+          label="Templates"
           isActive={activeTool === "templates"}
           onClick={() => onChangeActiveTool("templates")}
         />
@@ -46,15 +45,9 @@ export const Sidebar = ({
         />
         <SidebarItem
           icon={Shapes}
-          label="Shapes"
-          isActive={activeTool === "shapes"}
-          onClick={() => onChangeActiveTool("shapes")}
-        />
-        <SidebarItem
-          icon={Pencil}
-          label="Draw"
-          isActive={activeTool === "draw"}
-          onClick={() => onChangeActiveTool("draw")}
+          label="Elements"
+          isActive={activeTool === "elements"}
+          onClick={() => onChangeActiveTool("elements")}
         />
         <SidebarItem
           icon={Settings}

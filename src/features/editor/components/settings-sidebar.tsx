@@ -118,7 +118,7 @@ export const SettingsSidebar = ({
   const [background, setBackground] = useState<ColorValue>(initialBackground);
   const [platform, setPlatform] = useState<Platform>(initialMatch?.platform ?? "apple");
   const [presetId, setPresetId] = useState<string>(initialMatch?.presetId ?? CUSTOM_PRESET_ID);
-  const [openSection, setOpenSection] = useState<SectionId | null>(initialMatch ? null : "advanced");
+  const [openSection, setOpenSection] = useState<SectionId | null>(null);
 
   useEffect(() => {
     setPageWidth(initialPageWidth);
@@ -275,6 +275,17 @@ export const SettingsSidebar = ({
 
         <div className="border-t">
           <AccordionSection
+            title="Background color"
+            isOpen={openSection === "background"}
+            onToggle={() => toggleSection("background")}
+          >
+            <ColorPicker
+              value={background}
+              onChange={changeBackground}
+              targetSize={workspaceTargetSize}
+            />
+          </AccordionSection>
+          <AccordionSection
             title="Advanced sizing"
             isOpen={openSection === "advanced"}
             onToggle={() => toggleSection("advanced")}
@@ -313,17 +324,6 @@ export const SettingsSidebar = ({
                 Resize
               </Button>
             </div>
-          </AccordionSection>
-          <AccordionSection
-            title="Background color"
-            isOpen={openSection === "background"}
-            onToggle={() => toggleSection("background")}
-          >
-            <ColorPicker
-              value={background}
-              onChange={changeBackground}
-              targetSize={workspaceTargetSize}
-            />
           </AccordionSection>
         </div>
       </ScrollArea>

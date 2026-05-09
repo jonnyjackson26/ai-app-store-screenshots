@@ -12,7 +12,7 @@ import { Footer } from "@/features/editor/components/footer";
 import { useEditor } from "@/features/editor/hooks/use-editor";
 import { Sidebar } from "@/features/editor/components/sidebar";
 import { Toolbar } from "@/features/editor/components/toolbar";
-import { ShapeSidebar } from "@/features/editor/components/shape-sidebar";
+import { ElementsSidebar } from "@/features/editor/components/elements-sidebar";
 import { FillColorSidebar } from "@/features/editor/components/fill-color-sidebar";
 import { StrokeColorSidebar } from "@/features/editor/components/stroke-color-sidebar";
 import { StrokeWidthSidebar } from "@/features/editor/components/stroke-width-sidebar";
@@ -21,7 +21,6 @@ import { TextSidebar } from "@/features/editor/components/text-sidebar";
 import { FontSidebar } from "@/features/editor/components/font-sidebar";
 import { ImageSidebar } from "@/features/editor/components/image-sidebar";
 import { FilterSidebar } from "@/features/editor/components/filter-sidebar";
-import { DrawSidebar } from "@/features/editor/components/draw-sidebar";
 import { TemplateSidebar } from "@/features/editor/components/template-sidebar";
 import { SettingsSidebar } from "@/features/editor/components/settings-sidebar";
 import { JsonSidebar } from "@/features/editor/components/json-sidebar";
@@ -72,20 +71,12 @@ const EditorBody = ({ defaultState }: { defaultState: string | undefined }) => {
   });
 
   const onChangeActiveTool = useCallback((tool: ActiveTool) => {
-    if (tool === "draw") {
-      editor?.enableDrawingMode();
-    }
-
-    if (activeTool === "draw") {
-      editor?.disableDrawingMode();
-    }
-
     if (tool === activeTool) {
       return setActiveTool("select");
     }
 
     setActiveTool(tool);
-  }, [activeTool, editor]);
+  }, [activeTool]);
 
   const canvasRef = useRef(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -118,7 +109,7 @@ const EditorBody = ({ defaultState }: { defaultState: string | undefined }) => {
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
         />
-        <ShapeSidebar
+        <ElementsSidebar
           editor={editor}
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
@@ -164,11 +155,6 @@ const EditorBody = ({ defaultState }: { defaultState: string | undefined }) => {
           onChangeActiveTool={onChangeActiveTool}
         />
         <FilterSidebar
-          editor={editor}
-          activeTool={activeTool}
-          onChangeActiveTool={onChangeActiveTool}
-        />
-        <DrawSidebar
           editor={editor}
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}

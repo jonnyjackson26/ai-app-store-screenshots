@@ -117,10 +117,9 @@ export const colors = [
 
 export type ActiveTool =
   | "select"
-  | "shapes"
+  | "elements"
   | "text"
   | "images"
-  | "draw"
   | "fill"
   | "stroke-color"
   | "stroke-width"

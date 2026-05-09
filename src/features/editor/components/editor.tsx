@@ -26,8 +26,33 @@ import { TemplateSidebar } from "@/features/editor/components/template-sidebar";
 import { SettingsSidebar } from "@/features/editor/components/settings-sidebar";
 import { JsonSidebar } from "@/features/editor/components/json-sidebar";
 import { AiSidebar } from "@/features/ai/components/ai-sidebar";
+import { defaultTemplate } from "@/lib/templates";
 
 export const Editor = () => {
+  const [defaultState, setDefaultState] = useState<string | undefined>();
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(defaultTemplate.json)
+      .then((res) => (res.ok ? res.text() : undefined))
+      .catch(() => undefined)
+      .then((json) => {
+        if (cancelled) return;
+        setDefaultState(json);
+        setReady(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (!ready) return <div className="h-full bg-muted" />;
+
+  return <EditorBody defaultState={defaultState} />;
+};
+
+const EditorBody = ({ defaultState }: { defaultState: string | undefined }) => {
   const [activeTool, setActiveTool] = useState<ActiveTool>("select");
   // Shared with useJsonSync (suppresses JSON-editor refresh during AI preview)
   // and useAiChat (set true while applying ops to the canvas).
@@ -43,6 +68,7 @@ export const Editor = () => {
     defaultWidth: 900,
     defaultHeight: 1200,
     clearSelectionCallback: onClearSelection,
+    defaultState,
   });
 
   const onChangeActiveTool = useCallback((tool: ActiveTool) => {

@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useRef } from "react";
 import { CiFileOn } from "react-icons/ci";
+import { FaGithub } from "react-icons/fa";
 import { useFilePicker } from "use-file-picker";
 import {
   ChevronDown,
@@ -79,10 +81,11 @@ export const Navbar = ({
   const hasFocusedTitle = useRef(false);
 
   return (
-    <nav className="w-full flex items-center p-4 h-[68px] gap-x-8 border-b lg:pl-[34px]">
+    <nav className="w-full flex items-center p-4 h-[68px] gap-x-3 border-b lg:pl-[34px]">
       <NewConfirmDialog />
       <OpenConfirmDialog />
       <Logo />
+      <Separator orientation="vertical" className="h-6" />
       <div className="w-full flex items-center gap-x-1 h-full">
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
@@ -173,6 +176,17 @@ export const Navbar = ({
           </Button>
         </Hint>
         <div className="ml-auto flex items-center gap-x-4">
+          <Button size="sm" variant="ghost" asChild>
+            <Link
+              href="https://github.com/jonnyjackson26/ai-app-store-screenshots"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="GitHub repository"
+            >
+              <FaGithub className="size-4 mr-2" />
+              Open Source
+            </Link>
+          </Button>
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <Button size="sm" variant="ghost">

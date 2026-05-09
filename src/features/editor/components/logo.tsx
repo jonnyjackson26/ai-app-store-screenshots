@@ -1,17 +1,11 @@
 import Link from "next/link";
-import Image from "next/image";
 
 export const Logo = () => {
   return (
-    <Link href="/">
-      <div className="size-8 relative shrink-0">
-        <Image
-          src="/brand/logo.svg"
-          fill
-          alt="The Canvas"
-          className="shrink-0 hover:opacity-75 transition"
-        />
-      </div>
+    <Link href="/" className="group shrink-0">
+      <span className="font-semibold text-base tracking-tight whitespace-nowrap text-foreground group-hover:text-foreground/70 transition">
+        AI App Store Screenshots
+      </span>
     </Link>
   );
 };

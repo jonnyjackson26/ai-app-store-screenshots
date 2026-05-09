@@ -6,6 +6,7 @@ import {
   DEFAULT_PAGE_GAP,
   type DeviceFrameMeta,
 } from "@/features/editor/types";
+import { dematerializeFill } from "@/features/editor/color-utils";
 import type { SceneObject, SceneSummary } from "./types";
 
 type ObjWithCustom = fabric.Object & {
@@ -64,7 +65,7 @@ export const buildSceneSummary = (canvas: fabric.Canvas): SceneSummary => {
     height: round(workspace?.height),
     numPages,
     pageGap: round(pageGap),
-    background: typeof workspace?.fill === "string" ? workspace.fill : "#ffffff",
+    background: workspace?.fill ? dematerializeFill(workspace.fill) : "#ffffff",
   };
 
   let backfilled = false;
@@ -139,7 +140,10 @@ export const formatSceneForPrompt = (scene: SceneSummary): string => {
   lines.push(`  height: ${scene.page.height}`);
   lines.push(`  numPages: ${scene.page.numPages}`);
   lines.push(`  pageGap: ${scene.page.pageGap}`);
-  lines.push(`  background: ${scene.page.background}`);
+  const bg = scene.page.background;
+  lines.push(
+    `  background: ${typeof bg === "string" ? bg : JSON.stringify(bg)}`,
+  );
   lines.push("objects:");
   for (const o of scene.objects) {
     const parts: string[] = [

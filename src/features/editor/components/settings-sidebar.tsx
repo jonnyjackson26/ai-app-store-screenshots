@@ -86,25 +86,42 @@ export const SettingsSidebar = ({
 }: SettingsSidebarProps) => {
   const workspace = editor?.getWorkspace();
 
+  // The workspace fabric.Rect is mutated in place by AI ops and JSON edits, so
+  // its reference identity never changes. Bump a counter on canvas:dirty so the
+  // memos below recompute and the reset effect re-syncs the inputs.
+  const [workspaceVersion, setWorkspaceVersion] = useState(0);
+  useEffect(() => {
+    const canvas = editor?.canvas;
+    if (!canvas) return;
+    const handler = () => setWorkspaceVersion((v) => v + 1);
+    canvas.on("canvas:dirty" as never, handler);
+    return () => {
+      canvas.off("canvas:dirty" as never, handler);
+    };
+  }, [editor?.canvas]);
+
   const initialNumPages = useMemo(() => {
     const raw = (workspace as (fabric.Object & { numPages?: number }) | undefined)?.numPages;
     const parsed = typeof raw === "number" && raw >= 1 ? Math.floor(raw) : DEFAULT_NUM_PAGES;
     return `${parsed}`;
-  }, [workspace]);
+  }, [workspace, workspaceVersion]);
   const initialPageWidth = useMemo(() => {
     const totalWidth = workspace?.width ?? 0;
     const pages = toIntOr(initialNumPages, DEFAULT_NUM_PAGES);
     return `${Math.round(totalWidth / pages)}`;
-  }, [workspace, initialNumPages]);
+  }, [workspace, workspaceVersion, initialNumPages]);
   const initialPageGap = useMemo(() => {
     const raw = (workspace as (fabric.Object & { pageGap?: number }) | undefined)?.pageGap;
     const parsed = typeof raw === "number" && raw >= 0 ? raw : DEFAULT_PAGE_GAP;
     return `${parsed}`;
-  }, [workspace]);
-  const initialHeight = useMemo(() => `${workspace?.height ?? 0}`, [workspace]);
+  }, [workspace, workspaceVersion]);
+  const initialHeight = useMemo(
+    () => `${workspace?.height ?? 0}`,
+    [workspace, workspaceVersion],
+  );
   const initialBackground = useMemo<ColorValue>(
     () => (workspace?.fill ? dematerializeFill(workspace.fill) : FILL_COLOR),
-    [workspace],
+    [workspace, workspaceVersion],
   );
   const initialMatch = useMemo(
     () => findPresetByDimensions(toIntOr(initialPageWidth, 0), toIntOr(initialHeight, 0)),

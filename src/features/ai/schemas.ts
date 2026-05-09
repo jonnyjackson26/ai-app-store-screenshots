@@ -160,7 +160,7 @@ export const SetPageSettingsSchema = z
     pageGap: z.number().nonnegative().optional(),
     width: z.number().positive().optional(),
     height: z.number().positive().optional(),
-    background: ColorStringSchema.optional(),
+    background: FillSchema.optional(),
     summary: z.string().min(1).max(140),
   })
   .strict();

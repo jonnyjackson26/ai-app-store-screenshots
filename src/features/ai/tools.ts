@@ -202,7 +202,7 @@ export const TOOL_DEFINITIONS = [
     function: {
       name: "set_page_settings",
       description:
-        "Update the document's page settings. Use this to add pages (numPages), change page dimensions, gap between pages, or background color.",
+        "Update the document's page settings. Use this to add pages (numPages), change page dimensions, gap between pages, or background fill (solid color OR a structured gradient).",
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -212,10 +212,7 @@ export const TOOL_DEFINITIONS = [
           pageGap: { type: "number", minimum: 0 },
           width: { type: "number", exclusiveMinimum: 0 },
           height: { type: "number", exclusiveMinimum: 0 },
-          background: {
-            type: "string",
-            description: "Solid color string. Do NOT use CSS gradients.",
-          },
+          background: fillSchema,
           summary: { type: "string" },
         },
       },

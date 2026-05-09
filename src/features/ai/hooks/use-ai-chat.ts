@@ -148,6 +148,10 @@ export const useAiChat = (
             ed.skipSave.current = false;
             aiApplying.current = false;
           }
+          // Now that the aiApplying guard is down, fire canvas:dirty so
+          // useJsonSync (and any other listener) refreshes from the canvas.
+          // Events fired during applyOps were suppressed by the guard.
+          ed.canvas.fire("canvas:dirty" as never);
           ed.save();
         }
 
@@ -204,6 +208,7 @@ export const useAiChat = (
       await restoreSnapshot(ed.canvas, turn.baselineJson);
       ed.skipSave.current = false;
       aiApplying.current = false;
+      ed.canvas.fire("canvas:dirty" as never);
       ed.save();
       setTurns((prev) => prev.slice(0, idx));
       setMessages((prev) => {

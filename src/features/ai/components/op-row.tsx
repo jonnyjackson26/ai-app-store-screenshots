@@ -33,7 +33,7 @@ type AnyObject = Record<string, unknown>;
 
 interface BaselineShape {
   objects?: AnyObject[];
-  background?: string;
+  background?: unknown;
 }
 
 const findBaselineObject = (

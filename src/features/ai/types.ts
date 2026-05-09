@@ -1,6 +1,8 @@
 // Shared types for the AI chatbot tool. The schemas in ./schemas.ts are the
 // source of truth at runtime; these are the static counterparts.
 
+import type { ColorValue } from "@/features/editor/types";
+
 export type AiObjectType =
   | "textbox"
   | "rect"
@@ -40,7 +42,7 @@ export interface SetPageSettingsOp {
     pageGap?: number;
     width?: number;
     height?: number;
-    background?: string;
+    background?: ColorValue;
   };
   summary: string;
 }
@@ -115,7 +117,7 @@ export interface ScenePage {
   height: number;
   numPages: number;
   pageGap: number;
-  background: string;
+  background: ColorValue;
 }
 
 export interface SceneSummary {

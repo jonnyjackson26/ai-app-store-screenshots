@@ -33,3 +33,5 @@ sync to github button on json panel
 use asc cli to put on your app store connect directly
 
 internatilizatoin
+
+add direction to gradients
